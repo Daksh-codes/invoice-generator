@@ -1,0 +1,35 @@
+firm name 
+sub heading 
+logo
+add
+phone
+email
+pan
+
+bill no 
+bill date
+payment terms 
+due date 
+
+to name
+add
+
+
+services desc
+subtotal
+disc
+total
+
+bank details
+banking name
+name of bank
+account number
+type
+ifsc code
+branch
+
+firm name 
+sign box
+propeitor/ authroised signature 
+
+upi scanner
