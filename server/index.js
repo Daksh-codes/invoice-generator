@@ -1,26 +1,36 @@
-const cors = require('cors')
-const express = require('express')
-const issuerRoute = require('./routes/issuerRoutes.js')
+const cors = require("cors");
+const express = require("express");
+const db = require("./db");
+const runMigrations = require("./scripts/migrate.js");
+const path = require("path");
+
+
+// Run migrations FIRST before any controller is required
+runMigrations(db);
+
+const issuerRoute = require("./routes/issuerRoutes.js");
 const clientRoute = require("./routes/clientRoutes");
 const bankRoute = require("./routes/bankRoutes");
-const invoiceRoute = require("./routes/invoiceRoutes");
+const billRoutes = require("./routes/billRoute.js");
+const appRoutes = require("./routes/appRoutes");
 
 const app = express();
 
 app.use(express.json());
-app.use(cors({}))
+app.use(cors({}));
 
+app.use("/images", express.static(path.join(__dirname, "images")));
 
-app.use("/issuer/" , issuerRoute )
-app.use("/client", clientRoute);
-app.use("/bank", bankRoute);
-app.use("/invoice", invoiceRoute);
+app.use("/api/issuers", issuerRoute);
+app.use("/api/clients", clientRoute);
+app.use("/api/bank", bankRoute);
+app.use("/api/bills", billRoutes);
+app.use("/api/app", appRoutes);
 
-
-app.get('/health', (req , res) => {
-    res.send("OK");
+app.get("/health", (req, res) => {
+  res.send("OK");
 });
 
-app.listen(3000, ()=> {
-    console.log("Server running on port 3000");
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
 });
