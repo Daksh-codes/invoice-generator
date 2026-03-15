@@ -1,13 +1,29 @@
-import Template1 from "./template/template_1"
+import Layout from "./component/Layout";
+import BillsDashboard from "./pages/Billsdashboard ";
+import FirmForm from "./pages/Firmform";
+import InvoicePreviewPage from "./pages/Invoicepreviewpage";
+import { Route, Routes } from "react-router-dom";
+import FirmsList from "./pages/Firmslist";
+import ClientsPage from "./pages/Clientspage";
+import BillForm from "./pages/Billform"
 
 function App() {
- 
-
   return (
-    <div className="">
-      <Template1 />
-    </div>
-  )
-}
+    <Routes>
+      {/* Pages WITH navbar */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<BillsDashboard />} />
+        <Route path="/bills/new" element={<BillForm />} />
+        <Route path="/firms/new" element={<FirmForm />} />
+        <Route path="/firms/:id/edit" element={<FirmForm />} />
+        <Route path="/firms" element={<FirmsList />} />
+        <Route path="/clients" element={<ClientsPage />} />
+        
+      </Route>
 
-export default App
+      {/* Pages WITHOUT navbar — clean print layout */}
+      <Route path="/bills/:id/preview" element={<InvoicePreviewPage />} />
+    </Routes>
+  );
+}
+export default App;
