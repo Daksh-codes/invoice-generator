@@ -78,26 +78,32 @@ const createIssuerTx = db.transaction((payload) => {
 
 const updateIssuerTx = db.transaction((id, payload) => {
   if (!payload.firm_name?.trim())
-    throw Object.assign(new Error("Firm name is required"), { statusCode: 400 });
+    throw Object.assign(new Error("Firm name is required"), {
+      statusCode: 400,
+    });
+
+  // Fetch existing logo so we don't overwrite it when no new logo is provided
+  const existing = db
+    .prepare("SELECT logo, signature_image FROM issuer WHERE id = ?")
+    .get(id);
 
   const commonArgs = [
     payload.firm_name.trim(),
     payload.sub_heading?.trim() || null,
-    payload.logo?.trim() || null,
+    payload.logo?.trim() || existing?.logo || null, // ← keep existing if not provided
     payload.address?.trim() || null,
     payload.phone?.trim() || null,
     payload.email?.trim() || null,
     payload.pan?.trim()?.toUpperCase() || null,
     payload.gstin?.trim()?.toUpperCase() || null,
     payload.is_gst_enabled ? 1 : 0,
-    payload.signature_image?.trim() || null,
+    payload.signature_image?.trim() || existing?.signature_image || null, // ← same for signature
   ];
-
   // EDGE CASE: if prefix is being changed, check if any bills already exist
   // Changing prefix after bills exist would make new numbers inconsistent with old ones
-  const hasBills = db.prepare(
-    "SELECT 1 FROM invoice WHERE issuer_id = ? LIMIT 1"
-  ).get(id);
+  const hasBills = db
+    .prepare("SELECT 1 FROM invoice WHERE issuer_id = ? LIMIT 1")
+    .get(id);
 
   if (hasBills) {
     // Silently ignore prefix changes — bills already exist, prefix is locked
@@ -106,9 +112,13 @@ const updateIssuerTx = db.transaction((id, payload) => {
 
   // No bills yet — safe to update prefixes too
   if (!payload.invoice_prefix?.trim())
-    throw Object.assign(new Error("Invoice prefix is required"), { statusCode: 400 });
+    throw Object.assign(new Error("Invoice prefix is required"), {
+      statusCode: 400,
+    });
   if (!payload.quotation_prefix?.trim())
-    throw Object.assign(new Error("Quotation prefix is required"), { statusCode: 400 });
+    throw Object.assign(new Error("Quotation prefix is required"), {
+      statusCode: 400,
+    });
 
   return updateIssuerWithPrefixStmt.run(
     ...commonArgs,
@@ -146,7 +156,9 @@ function createIssuer(req, res) {
     if (req.file?.path && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    res.status(err.statusCode || 500).json({ message: err.message || "Failed to create issuer" });
+    res
+      .status(err.statusCode || 500)
+      .json({ message: err.message || "Failed to create issuer" });
   }
 }
 
@@ -270,14 +282,15 @@ function getPrefixHistory(req, res) {
   res.json(rows);
 }
 
-
 function uploadLogo(req, res) {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const issuer = db.prepare("SELECT id, logo FROM issuer WHERE id = ?").get(req.params.id);
+    const issuer = db
+      .prepare("SELECT id, logo FROM issuer WHERE id = ?")
+      .get(req.params.id);
     if (!issuer) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ message: "Issuer not found" });
@@ -290,7 +303,10 @@ function uploadLogo(req, res) {
     }
 
     const newPath = `/images/${req.file.filename}`;
-    db.prepare("UPDATE issuer SET logo = ? WHERE id = ?").run(newPath, req.params.id);
+    db.prepare("UPDATE issuer SET logo = ? WHERE id = ?").run(
+      newPath,
+      req.params.id,
+    );
 
     res.json({ success: true, logo: newPath });
   } catch (err) {
@@ -309,5 +325,5 @@ module.exports = {
   deleteIssuer,
   changePrefix,
   getPrefixHistory,
-  uploadLogo
+  uploadLogo,
 };
