@@ -11,7 +11,8 @@ const {
   getByStatus,
   convertToInvoice,
   getDescriptions,
-  unvoidBill
+  unvoidBill,
+  updateBill
 } = require("../controller/billController");
 
 // Specific routes first — before any /:id routes
@@ -28,6 +29,7 @@ router.post("/new/quotation", createBill("QUOTATION"));
 
 // Single bill actions — /:id routes LAST
 router.get("/:id", getById);
+router.put("/:id", updateBill);
 router.put("/:id/status", updateStatus);
 router.post("/:id/finalize", finalizeDraft);
 router.post("/:id/void", voidBill);

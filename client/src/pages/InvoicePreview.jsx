@@ -2,6 +2,7 @@
 // Reads template from data.template saved at bill creation — no toggle needed.
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getBill } from "../api";
 import InvoiceTemplate from "./InvoiceTemplate";
 
@@ -9,6 +10,7 @@ export default function InvoicePreview({ id }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!id) return;
@@ -39,6 +41,18 @@ export default function InvoicePreview({ id }) {
 
       {/* Buttons hidden in print */}
       <div className="flex gap-2 print:hidden">
+        <button
+          onClick={() => navigate(`/`)}
+          className="px-3 py-1 text-sm rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition"
+        >
+          Dashboard
+        </button>
+        <button
+          onClick={() => navigate(`/bills/${id}/edit`)}
+          className="px-3 py-1 text-sm rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition"
+        >
+          Edit
+        </button>
         <button
           onClick={() => window.print()}
           className="px-3 py-1 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition"

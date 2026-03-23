@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: "",
   timeout: 10000,
 });
 
@@ -24,6 +24,7 @@ export const convertToInvoice = (id) => api.post(`/api/bills/${id}/convert`);
 export const updatePaymentStatus = (id, payload) =>
   api.put(`/api/bills/${id}/status`, payload);
 export const getDescriptions = () => api.get("/api/bills/descriptions");
+export const updateBill = (id, data) => api.put(`/api/bills/${id}`, data);
 
 // ── Issuers ────────────────────────────────────────────────────────────────
 export const getAllIssuers = () => api.get("/api/issuers");
@@ -33,8 +34,8 @@ export const createIssuer = (formData) =>
 export const updateIssuer = (id, data) => api.put(`/api/issuers/${id}`, data);
 export const uploadLogo = (id, formData) =>
   api.patch(`/api/issuers/${id}/logo`, formData);
-export const changePrefix = (id, doc_type, new_prefix) =>
-  api.post(`/api/issuers/${id}/change-prefix`, { doc_type, new_prefix });
+export const changePrefix = (id, data) =>
+  api.post(`/api/issuers/${id}/change-prefix`, data);
 export const getPrefixHistory = (id) =>
   api.get(`/api/issuers/${id}/prefix-history`);
 export const deleteIssuer = (id) => api.delete(`/api/issuers/${id}`);
@@ -55,11 +56,14 @@ export const uploadQr = (id, formData) =>
   api.patch(`/api/bank/${id}/qr`, formData);
 export const getAllBankNames = () => api.get("/api/bank/names");
 
+// ── Payment modes ──────────────────────────────────────────────────────────
+export const getPaymentModes = () => api.get("/api/payment-modes");
+export const createPaymentMode = (data) => api.post("/api/payment-modes", data);
+
 // ── Bootstrap ──────────────────────────────────────────────────────────────
 export const bootstrap = () => api.get("/api/app/bootstrap");
 
-// ── Image helper ───────────────────────────────────────────────────────────
-export const imageUrl = (path) =>
-  path ? `http://localhost:3000${path}` : null;
+// ── Image helper — relative path, works on any host ───────────────────────
+export const imageUrl = (path) => path ?? null;
 
 export default api;

@@ -7,9 +7,9 @@ const insertBillStmt = db.prepare(`
     issuer_id, client_id, template, bill_number, bill_date,
     payment_terms, due_date, subtotal, discount,
     tax_total, cgst, sgst, igst, is_igst,
-    total, total_in_words, notes,
+    total, total_in_words, notes, spacer_rows,
     doc_type, status
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 const insertItemStmt = db.prepare(`
@@ -162,6 +162,7 @@ const createBillTx = db.transaction((payload, doc_type) => {
     payload.total,
     payload.total_in_words.trim(),
     payload.notes?.trim() || null,
+    payload.spacer_rows ?? 3,
     doc_type,
     status,
   );
@@ -395,7 +396,8 @@ function getAll(req, res) {
       invoice.payment_status,
       invoice.paid_date, 
       invoice.payment_mode, 
-      invoice.paid_amount
+      invoice.paid_amount,
+      spacer_rows
     FROM invoice
     JOIN client ON invoice.client_id = client.id
     WHERE invoice.doc_type = ?
@@ -417,7 +419,7 @@ function getById(req, res) {
       issuer.firm_name, issuer.sub_heading, issuer.logo,
       issuer.address AS firm_address, issuer.phone, issuer.email,
       issuer.pan, issuer.signature_image, issuer.gstin, issuer.is_gst_enabled,
-      client.name AS client_name, client.gstin AS client_gstin,
+      client.name AS client_name, client.address AS client_address,
       bank.account_holder_name, bank.bank_name, bank.account_number,
       bank.account_type, bank.ifsc_code, bank.branch, bank.upi_qr
     FROM invoice
@@ -447,8 +449,6 @@ function updateStatus(req, res) {
   try {
     const body = req.body ?? {};
     const { payment_status, paid_amount, payment_mode, paid_date } = body;
-    
-    console.log("updateStatus body:", body);  // ← add this
     
     const values = [
       payment_status ?? null,
@@ -537,6 +537,47 @@ function unvoidBill(req, res) {
   res.json({ ok: true });
 }
 
+const updateBillTx = db.transaction((id, payload) => {
+  db.prepare(`
+    UPDATE invoice SET
+      client_id      = ?,
+      bill_date      = ?,
+      due_date       = ?,
+      payment_terms  = ?,
+      notes          = ?,
+      template       = ?,
+      spacer_rows    = ?,
+      subtotal       = ?,
+      discount       = ?,
+      tax_total      = ?,
+      cgst           = ?,
+      sgst           = ?,
+      igst           = ?,
+      is_igst        = ?,
+      total          = ?,
+      total_in_words = ?
+    WHERE id = ?
+  `).run(
+    payload.client_id, payload.bill_date, payload.due_date ?? null,
+    payload.payment_terms ?? null, payload.notes ?? null,
+    payload.template, payload.spacer_rows ?? 3,
+    payload.subtotal, payload.discount ?? 0, payload.tax_total ?? 0,
+    payload.cgst ?? 0, payload.sgst ?? 0, payload.igst ?? 0,
+    payload.is_igst ?? 0, payload.total, payload.total_in_words, id
+  );
+  db.prepare("DELETE FROM invoice_items WHERE invoice_id = ?").run(id);
+  insertItems(id, payload.items);
+});
+
+function updateBill(req, res) {
+  try {
+    updateBillTx(req.params.id, req.body);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
 
 module.exports = {
   createBill,
@@ -549,5 +590,6 @@ module.exports = {
   getByStatus,
   convertToInvoice,
   getDescriptions,
-  unvoidBill
+  unvoidBill,
+  updateBill
 };

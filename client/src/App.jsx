@@ -6,6 +6,8 @@ import { Route, Routes } from "react-router-dom";
 import FirmsList from "./pages/Firmslist";
 import ClientsPage from "./pages/Clientspage";
 import BillForm from "./pages/Billform"
+import BillEditForm from "./pages/BillEditForm";
+import PrefixHistoryPage from "./pages/PrefixHistoryPage";
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
         <Route path="/firms/:id/edit" element={<FirmForm />} />
         <Route path="/firms" element={<FirmsList />} />
         <Route path="/clients" element={<ClientsPage />} />
+        <Route path="/bills/:id/edit" element={<BillEditForm />} />
+        <Route path="/firms/:id/prefix-history" element={<PrefixHistoryPage />} />
         
       </Route>
 

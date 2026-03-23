@@ -15,7 +15,7 @@
 
  @page {
   size: A4;
-  margin: 8mm 12mm 20mm 12mm; /* top right bottom left — more bottom for footer */
+  margin: 0mm 12mm 20mm 12mm; /* top right bottom left — more bottom for footer */
 }
 
   /* Pin footer to bottom of every printed page */
