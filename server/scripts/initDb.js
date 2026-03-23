@@ -86,6 +86,10 @@ db.exec(`
     total_in_words TEXT NOT NULL,
     notes TEXT,
     paid_amount REAL DEFAULT 0,
+    template TEXT DEFAULT 'with_logo',
+    spacer_rows INTEGER DEFAULT 3,
+    payment_mode TEXT,
+    paid_date TEXT,
     payment_status TEXT CHECK(payment_status IN ('unpaid', 'partial', 'paid')) DEFAULT 'unpaid',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (issuer_id) REFERENCES issuer(id),
@@ -116,6 +120,13 @@ db.exec(`
     FOREIGN KEY (issuer_id) REFERENCES issuer(id)
   );
 
+  CREATE TABLE IF NOT EXISTS payment_modes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    label TEXT NOT NULL UNIQUE
+  );
+
+  INSERT OR IGNORE INTO payment_modes (label) VALUES ('Cash'), ('UPI'), ('Bank Transfer');
+
   -- migrations table still exists so the migration runner on existing DBs
   -- knows which versions have been applied. For fresh DBs we mark all as done.
   CREATE TABLE IF NOT EXISTS migrations (
@@ -125,6 +136,9 @@ db.exec(`
   INSERT OR IGNORE INTO migrations (version) VALUES (1);
   INSERT OR IGNORE INTO migrations (version) VALUES (2);
   INSERT OR IGNORE INTO migrations (version) VALUES (3);
+  INSERT OR IGNORE INTO migrations (version) VALUES (4);
+  INSERT OR IGNORE INTO migrations (version) VALUES (5);
+  INSERT OR IGNORE INTO migrations (version) VALUES (6);
 `);
 
 console.log("✅ Tables created");
@@ -154,7 +168,6 @@ const issuerId = db.prepare(`
   1,
 ).lastInsertRowid;
 
-// Seed initial prefix history for the seeded issuer
 db.prepare(`
   INSERT INTO prefix_history (issuer_id, doc_type, prefix, counter_start)
   VALUES (?, ?, ?, ?)
