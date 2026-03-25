@@ -807,49 +807,87 @@ export default function BillsDashboard() {
   }
 
   function exportToExcel() {
-    import("https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs").then(
-      (XLSX) => {
-        const rows = filtered.map((bill) => ({
-          "Bill No.": bill.bill_number ?? "",
-          Type: bill.doc_type ?? "",
-          Client: bill.client_name ?? "",
-          Firm: issuers.find((i) => i.id === bill.issuer_id)?.firm_name ?? "",
-          "Bill Date": bill.bill_date?.slice(0, 10) ?? "",
-          "Paid Date": bill.paid_date?.slice(0, 10) ?? "",
-          "Amount (₹)": Number(bill.total ?? 0),
-          "Paid (₹)": Number(bill.paid_amount ?? 0),
-          "Balance (₹)":
-            Number(bill.total ?? 0) - Number(bill.paid_amount ?? 0),
-          Status: bill.payment_status ?? "",
-          "Payment Mode": bill.payment_mode ?? "",
-          Template: bill.template ?? "",
-          "Bill Status": bill.status ?? "",
-        }));
+    const rows = filtered.map((bill) => ({
+      "Bill No.": bill.bill_number ?? "",
+      Type: bill.doc_type ?? "",
+      Client: bill.client_name ?? "",
+      Firm: issuers.find((i) => i.id === bill.issuer_id)?.firm_name ?? "",
+      "Bill Date": bill.bill_date?.slice(0, 10) ?? "",
+      "Paid Date": bill.paid_date?.slice(0, 10) ?? "",
+      "Amount (₹)": Number(bill.total ?? 0),
+      "Paid (₹)": Number(bill.paid_amount ?? 0),
+      "Balance (₹)": Number(bill.total ?? 0) - Number(bill.paid_amount ?? 0),
+      Status: bill.payment_status ?? "",
+      "Payment Mode": bill.payment_mode ?? "",
+      Template: bill.template ?? "",
+      "Bill Status": bill.status ?? "",
+    }));
 
-        const ws = XLSX.utils.json_to_sheet(rows);
-        // Column widths
-        ws["!cols"] = [
-          { wch: 16 },
-          { wch: 10 },
-          { wch: 22 },
-          { wch: 22 },
-          { wch: 12 },
-          { wch: 12 },
-          { wch: 14 },
-          { wch: 12 },
-          { wch: 14 },
-          { wch: 10 },
-          { wch: 14 },
-          { wch: 14 },
-          { wch: 12 },
-        ];
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Bills");
-        const date = new Date().toISOString().slice(0, 10);
-        XLSX.writeFile(wb, `bills-export-${date}.xlsx`);
-      },
-    );
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [
+      { wch: 16 },
+      { wch: 10 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 12 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bills");
+    const date = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `bills-export-${date}.xlsx`);
   }
+  //   function exportToExcel() {
+  //     import("https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs").then(
+  //       (XLSX) => {
+  //         const rows = filtered.map((bill) => ({
+  //           "Bill No.": bill.bill_number ?? "",
+  //           Type: bill.doc_type ?? "",
+  //           Client: bill.client_name ?? "",
+  //           Firm: issuers.find((i) => i.id === bill.issuer_id)?.firm_name ?? "",
+  //           "Bill Date": bill.bill_date?.slice(0, 10) ?? "",
+  //           "Paid Date": bill.paid_date?.slice(0, 10) ?? "",
+  //           "Amount (₹)": Number(bill.total ?? 0),
+  //           "Paid (₹)": Number(bill.paid_amount ?? 0),
+  //           "Balance (₹)":
+  //             Number(bill.total ?? 0) - Number(bill.paid_amount ?? 0),
+  //           Status: bill.payment_status ?? "",
+  //           "Payment Mode": bill.payment_mode ?? "",
+  //           Template: bill.template ?? "",
+  //           "Bill Status": bill.status ?? "",
+  //         }));
+
+  //         const ws = XLSX.utils.json_to_sheet(rows);
+  //         // Column widths
+  //         ws["!cols"] = [
+  //           { wch: 16 },
+  //           { wch: 10 },
+  //           { wch: 22 },
+  //           { wch: 22 },
+  //           { wch: 12 },
+  //           { wch: 12 },
+  //           { wch: 14 },
+  //           { wch: 12 },
+  //           { wch: 14 },
+  //           { wch: 10 },
+  //           { wch: 14 },
+  //           { wch: 14 },
+  //           { wch: 12 },
+  //         ];
+  //         const wb = XLSX.utils.book_new();
+  //         XLSX.utils.book_append_sheet(wb, ws, "Bills");
+  //         const date = new Date().toISOString().slice(0, 10);
+  //         XLSX.writeFile(wb, `bills-export-${date}.xlsx`);
+  //       },
+  //     );
+  //   }
 
   function clearFilters() {
     setFilterFirm("");
