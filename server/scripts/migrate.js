@@ -109,6 +109,49 @@ const migrations = [
 `);
     },
   },
+  {
+    version: 8,
+    description: "Create payments table and backfill existing invoice payments",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          invoice_id INTEGER NOT NULL,
+          amount REAL NOT NULL CHECK(amount > 0),
+          mode TEXT,
+          payment_date TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (invoice_id) REFERENCES invoice(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_payments_invoice_id
+          ON payments(invoice_id);
+      `);
+
+      const existing = db.prepare(`
+        SELECT id, paid_amount, payment_mode, paid_date, bill_date
+        FROM invoice
+        WHERE COALESCE(paid_amount, 0) > 0
+          AND NOT EXISTS (
+            SELECT 1 FROM payments WHERE payments.invoice_id = invoice.id
+          )
+      `).all();
+
+      const insertPayment = db.prepare(`
+        INSERT INTO payments (invoice_id, amount, mode, payment_date)
+        VALUES (?, ?, ?, ?)
+      `);
+
+      for (const invoice of existing) {
+        insertPayment.run(
+          invoice.id,
+          invoice.paid_amount,
+          invoice.payment_mode || null,
+          invoice.paid_date || invoice.bill_date,
+        );
+      }
+    },
+  },
 ];
 
 function runMigrations(db) {

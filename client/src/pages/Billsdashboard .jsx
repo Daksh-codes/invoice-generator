@@ -1,7 +1,6 @@
 // src/pages/BillsDashboard.jsx
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx";
 import {
   getAllBills,
   getAllIssuers,
@@ -10,6 +9,9 @@ import {
   unvoidBill,
   getPaymentModes,
   createPaymentMode,
+  getPayments,
+  addPayment,
+  deletePayment,
 } from "../api";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -67,114 +69,78 @@ function ModeDropdown({ current, modes, onSelect, onAddMode }) {
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState("");
-  const inputRef = useRef();
+  const ref = useRef();
 
   useEffect(() => {
-    if (adding) setTimeout(() => inputRef.current?.focus(), 50);
-  }, [adding]);
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setAdding(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   async function handleAdd() {
     const label = newLabel.trim();
     if (!label) return;
+
     const created = await onAddMode(label);
     if (created) onSelect(created.label);
+
     setAdding(false);
     setNewLabel("");
     setOpen(false);
   }
 
   return (
-    <div className="relative" onClick={(e) => e.stopPropagation()}>
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 transition-colors"
+        className="text-xs text-slate-500 flex items-center gap-1"
       >
         {current ?? "Set mode"}
-        <svg
-          className="w-3 h-3 text-slate-300"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
       </button>
+
       {open && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => {
-              setOpen(false);
-              setAdding(false);
-              setNewLabel("");
-            }}
-          />
-          <div className="absolute z-20 left-0 mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[140px]">
-            {modes.map((m) => (
+        <div className="absolute z-50 left-0 mt-1 bg-white rounded-lg shadow-lg border py-1 min-w-[140px]">
+          {modes.map((m) => (
+            <button
+              key={m}
+              onClick={() => {
+                onSelect(m);
+                setOpen(false);
+              }}
+              className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50"
+            >
+              {m}
+            </button>
+          ))}
+
+          <div className="border-t mt-1 pt-1">
+            {adding ? (
+              <div className="px-2 py-1 flex gap-1">
+                <input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAdd();
+                  }}
+                  className="flex-1 text-xs border px-2 py-1"
+                />
+                <button onClick={handleAdd}>Add</button>
+              </div>
+            ) : (
               <button
-                key={m}
-                onClick={() => {
-                  onSelect(m);
-                  setOpen(false);
-                }}
-                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 ${m === current ? "font-semibold text-slate-800" : "text-slate-600"}`}
+                onClick={() => setAdding(true)}
+                className="w-full text-left px-3 py-1.5 text-xs text-blue-600"
               >
-                {m}
+                + Add new
               </button>
-            ))}
-            <div className="border-t border-slate-100 mt-1 pt-1">
-              {adding ? (
-                <div className="px-2 py-1 flex gap-1">
-                  <input
-                    ref={inputRef}
-                    value={newLabel}
-                    onChange={(e) => setNewLabel(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAdd();
-                      if (e.key === "Escape") {
-                        setAdding(false);
-                        setNewLabel("");
-                      }
-                    }}
-                    placeholder="Mode name…"
-                    className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-slate-300"
-                  />
-                  <button
-                    onClick={handleAdd}
-                    className="text-xs text-emerald-600 font-medium px-1"
-                  >
-                    Add
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setAdding(true)}
-                  className="w-full text-left px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 flex items-center gap-1.5"
-                >
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  Add new mode
-                </button>
-              )}
-            </div>
+            )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -244,77 +210,170 @@ function VoidModal({ bill, onConfirm, onCancel }) {
 }
 
 // ── Partial Payment Modal ──────────────────────────────────────────────────
-function PartialModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
-  const [paidAmount, setPaidAmount] = useState(
-    bill.paid_amount ? String(bill.paid_amount) : "",
-  );
+function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
+  const [payments, setPayments] = useState([]);
+  const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState(
     bill.payment_mode ?? modes[0] ?? "",
   );
-  const [paidDate, setPaidDate] = useState(
-    bill.paid_date ?? new Date().toISOString().slice(0, 10),
+  const [paymentDate, setPaymentDate] = useState(
+    new Date().toISOString().slice(0, 10),
   );
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const total = Number(bill.total ?? 0);
-  const paid = parseFloat(paidAmount) || 0;
-  const balance = total - paid;
+  const paidSoFar = payments.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+  const newAmount = parseFloat(amount) || 0;
+  const balance = Math.max(total - paidSoFar, 0);
+  const balanceAfter = Math.max(balance - newAmount, 0);
+
+  useEffect(() => {
+    let alive = true;
+    async function loadPayments() {
+      try {
+        setLoading(true);
+        const res = await getPayments(bill.id);
+        if (!alive) return;
+        setPayments(res.data.payments ?? []);
+        if (res.data.invoice) onChanged(bill.id, res.data.invoice);
+      } catch (err) {
+        if (alive) setError(err.response?.data?.message ?? "Failed to load payments.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+    loadPayments();
+    return () => {
+      alive = false;
+    };
+  }, [bill.id, onChanged]);
+
+  async function handleAddPayment() {
+    if (!newAmount || newAmount <= 0) return;
+    try {
+      setSaving(true);
+      setError("");
+      const res = await addPayment({
+        invoice_id: bill.id,
+        amount: newAmount,
+        mode: paymentMode,
+        payment_date: paymentDate,
+      });
+      setPayments(res.data.payments ?? []);
+      if (res.data.invoice) onChanged(bill.id, res.data.invoice);
+      setAmount("");
+    } catch (err) {
+      setError(err.response?.data?.message ?? "Failed to add payment.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeletePayment(paymentId) {
+    try {
+      setSaving(true);
+      setError("");
+      const res = await deletePayment(paymentId);
+      setPayments(res.data.payments ?? []);
+      if (res.data.invoice) onChanged(bill.id, res.data.invoice);
+    } catch (err) {
+      setError(err.response?.data?.message ?? "Failed to delete payment.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/30" onClick={onCancel} />
-      <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-sm z-10 space-y-4">
-        <div>
-          <h3 className="text-base font-semibold text-slate-800">
-            Partial Payment
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5 font-mono">
-            {bill.bill_number} · Total {formatAmount(bill.total)}
-          </p>
+      <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl z-10 space-y-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-800">
+              Payment History
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5 font-mono">
+              {bill.bill_number} - Total {formatAmount(bill.total)}
+            </p>
+          </div>
+          <StatusBadge status={balance <= 0 ? "paid" : paidSoFar > 0 ? "partial" : "unpaid"} />
         </div>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <p className="text-xs text-slate-400">Paid so far</p>
+            <p className="text-sm font-semibold text-emerald-600">{formatAmount(paidSoFar)}</p>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <p className="text-xs text-slate-400">Balance</p>
+            <p className="text-sm font-semibold text-amber-600">{formatAmount(balance)}</p>
+          </div>
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <p className="text-xs text-slate-400">After new payment</p>
+            <p className="text-sm font-semibold text-slate-800">{formatAmount(balanceAfter)}</p>
+          </div>
+        </div>
+
+        <div className="border border-slate-200 rounded-lg ">
+          <div className="px-3 py-2 bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Previous payments
+          </div>
+          {loading ? (
+            <div className="px-3 py-5 text-sm text-slate-400">Loading payments...</div>
+          ) : payments.length === 0 ? (
+            <div className="px-3 py-5 text-sm text-slate-400">No payments recorded yet.</div>
+          ) : (
+            <div className="divide-y divide-slate-100 max-h-52">
+              {payments.map((payment) => (
+                <div key={payment.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center px-3 py-2 text-sm">
+                  <span className="text-slate-500">{formatDate(payment.payment_date)}</span>
+                  <span className="text-slate-600">{payment.mode ?? "-"}</span>
+                  <span className="font-medium text-slate-800 text-right">{formatAmount(payment.amount)}</span>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => handleDeletePayment(payment.id)}
+                    className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-              Amount Paid
+              Amount
             </label>
             <input
               autoFocus
               type="number"
               min="0"
-              max={total}
+              max={balance}
               step="0.01"
-              value={paidAmount}
-              onChange={(e) => setPaidAmount(e.target.value)}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
               className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>
-
-          {paid > 0 && (
-            <div className="flex justify-between text-sm rounded-lg bg-slate-50 px-3 py-2">
-              <span className="text-slate-500">Balance remaining</span>
-              <span
-                className={`font-medium ${balance > 0 ? "text-amber-600" : "text-emerald-600"}`}
-              >
-                {formatAmount(balance)}
-              </span>
-            </div>
-          )}
-
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-              Received In
+              Mode
             </label>
             <div className="flex gap-2">
               <select
                 value={paymentMode}
                 onChange={(e) => setPaymentMode(e.target.value)}
-                className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white"
+                className="min-w-0 flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white"
               >
                 {modes.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
+                  <option key={m} value={m}>{m}</option>
                 ))}
               </select>
               <button
@@ -331,48 +390,42 @@ function PartialModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
               </button>
             </div>
           </div>
-
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-              Payment Date
+              Date
             </label>
             <input
               type="date"
-              value={paidDate}
-              onChange={(e) => setPaidDate(e.target.value)}
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>
+          <button
+            type="button"
+            onClick={handleAddPayment}
+            disabled={saving || loading || !newAmount || newAmount <= 0 || newAmount > balance}
+            className="px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            Add Payment
+          </button>
         </div>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-1">
           <button
             onClick={onCancel}
             className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
           >
-            Cancel
-          </button>
-          <button
-            onClick={() =>
-              onConfirm({
-                payment_status: "partial",
-                paid_amount: paid,
-                payment_mode: paymentMode,
-                paid_date: paidDate,
-              })
-            }
-            disabled={!paid || paid <= 0}
-            className="px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
-          >
-            Save
+            Close
           </button>
         </div>
       </div>
     </div>
   );
 }
-
-// ── Paid Modal ─────────────────────────────────────────────────────────────
+// Paid Modal ─────────────────────────────────────────────────────────────
 function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
   const [paymentMode, setPaymentMode] = useState(
     bill.payment_mode ?? modes[0] ?? "",
@@ -464,8 +517,6 @@ function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
     </div>
   );
 }
-
-// ── Status Dropdown ────────────────────────────────────────────────────────
 function StatusDropdown({
   bill,
   onUpdated,
@@ -476,15 +527,25 @@ function StatusDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const ref = useRef();
+
   const current = bill.payment_status ?? "unpaid";
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   async function handleUpdateStatus(payload) {
     setLoading(true);
     try {
-      await updatePaymentStatus(bill.id, payload);
-      onUpdated(bill.id, payload);
-    } catch (err) {
-      console.error("Status update failed", err);
+      const res = await updatePaymentStatus(bill.id, payload);
+      onUpdated(bill.id, res.data.invoice ?? payload);
     } finally {
       setLoading(false);
     }
@@ -493,22 +554,12 @@ function StatusDropdown({
   function handleSelect(e, status) {
     e.stopPropagation();
     setOpen(false);
-    if (status === "void") {
-      onVoidRequest(bill);
-      return;
-    }
-    if (status === "unvoid") {
-      onUnvoidRequest(bill);
-      return;
-    }
-    if (status === "partial") {
-      onPartialRequest(bill);
-      return;
-    }
-    if (status === "paid") {
-      onPaidRequest(bill);
-      return;
-    }
+
+    if (status === "void") return onVoidRequest(bill);
+    if (status === "unvoid") return onUnvoidRequest(bill);
+    if (status === "partial") return onPartialRequest(bill);
+    if (status === "paid") return onPaidRequest(bill);
+
     handleUpdateStatus({
       payment_status: "unpaid",
       paid_amount: 0,
@@ -517,100 +568,41 @@ function StatusDropdown({
     });
   }
 
-  // Void bills show a special dropdown with only Unvoid option
-  if (bill.status === "void") {
-    return (
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-1 focus:outline-none"
-        >
-          <StatusBadge status="void" />
-          <svg
-            className="w-3 h-3 text-slate-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </button>
-        {open && (
-          <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setOpen(false)}
-            />
-            <div className="absolute z-20 left-0 mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[130px]">
-              <button
-                onClick={(e) => handleSelect(e, "unvoid")}
-                className="w-full text-left px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                Unvoid Bill
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="relative" onClick={(e) => e.stopPropagation()}>
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={loading}
-        className="flex items-center gap-1 focus:outline-none"
+        className="flex items-center gap-1"
       >
         <StatusBadge status={current} />
-        <svg
-          className="w-3 h-3 text-slate-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
+        <svg className="w-3 h-3 text-slate-400" viewBox="0 0 24 24">
+          <path stroke="currentColor" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 left-0 mt-1 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[130px]">
-            {["unpaid", "partial", "paid"].map((s) => (
-              <button
-                key={s}
-                onClick={(e) => handleSelect(e, s)}
-                className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center gap-2 ${s === current ? "font-semibold" : ""}`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${STATUS_STYLES[s].dot}`}
-                />
-                {STATUS_STYLES[s].label}
-              </button>
-            ))}
-            <div className="border-t border-slate-100 mt-1 pt-1">
-              <button
-                onClick={(e) => handleSelect(e, "void")}
-                className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 flex items-center gap-2"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-red-300" />
-                Void Bill
-              </button>
-            </div>
+        <div className="absolute z-50 left-0 mt-1 bg-white rounded-lg shadow-lg border py-1 min-w-[130px]">
+          {["unpaid", "partial", "paid"].map((s) => (
+            <button
+              key={s}
+              onClick={(e) => handleSelect(e, s)}
+              className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center gap-2"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_STYLES[s].dot}`} />
+              {STATUS_STYLES[s].label}
+            </button>
+          ))}
+
+          <div className="border-t mt-1 pt-1">
+            <button
+              onClick={(e) => handleSelect(e, "void")}
+              className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-50"
+            >
+              Void Bill
+            </button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -618,7 +610,6 @@ function StatusDropdown({
 
 // ── Payment Mode Cell ──────────────────────────────────────────────────────
 function PaymentModeCell({ bill, modes, onAddMode, onUpdated }) {
-  const [loading, setLoading] = useState(false);
 
   if (bill.status === "void" || bill.payment_status === "unpaid") {
     return <span className="text-slate-300 text-xs">—</span>;
@@ -626,14 +617,11 @@ function PaymentModeCell({ bill, modes, onAddMode, onUpdated }) {
 
   async function handleSelect(mode) {
     if (mode === bill.payment_mode) return;
-    setLoading(true);
     try {
-      await updatePaymentStatus(bill.id, { payment_mode: mode });
-      onUpdated(bill.id, { payment_mode: mode });
+      const res = await updatePaymentStatus(bill.id, { payment_mode: mode });
+      onUpdated(bill.id, res.data.invoice ?? { payment_mode: mode });
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -665,7 +653,7 @@ export default function BillsDashboard() {
   const [docTypeFilter, setDocTypeFilter] = useState("INVOICE");
   const [filterFirm, setFilterFirm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const [filterTemplate, setFilterTemplate] = useState("");
+  const [filterMode, setFilterMode] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [search, setSearch] = useState("");
@@ -682,7 +670,7 @@ export default function BillsDashboard() {
         setBills([...(invRes.data ?? []), ...(quoRes.data ?? [])]);
         setIssuers(issuersRes.data ?? []);
         setPaymentModes(modesRes.data ?? []);
-      } catch (e) {
+      } catch {
         setError("Failed to load bills.");
       } finally {
         setLoading(false);
@@ -733,8 +721,8 @@ export default function BillsDashboard() {
     const bill = partialTarget ?? paidTarget;
     if (!bill) return;
     try {
-      await updatePaymentStatus(bill.id, payload);
-      handleUpdated(bill.id, payload);
+      const res = await updatePaymentStatus(bill.id, payload);
+      handleUpdated(bill.id, res.data.invoice ?? payload);
     } catch (err) {
       console.error("Status update failed", err);
     } finally {
@@ -749,8 +737,7 @@ export default function BillsDashboard() {
       if (filterFirm && b.issuer_id !== Number(filterFirm)) return false;
       if (filterStatus && b.payment_status?.toLowerCase() !== filterStatus)
         return false;
-      if (filterTemplate && (b.template ?? "with_logo") !== filterTemplate)
-        return false;
+      if (filterMode && (b.payment_mode ?? "") !== filterMode) return false;
       if (filterDateFrom || filterDateTo) {
         const d = b.bill_date?.slice(0, 10);
         if (!d) return false;
@@ -776,7 +763,7 @@ export default function BillsDashboard() {
     docTypeFilter,
     filterFirm,
     filterStatus,
-    filterTemplate,
+    filterMode,
     filterDateFrom,
     filterDateTo,
     search,
@@ -785,12 +772,9 @@ export default function BillsDashboard() {
   const stats = useMemo(() => {
     const nonVoid = filtered.filter((b) => b.status !== "void");
     const total = nonVoid.reduce((s, b) => s + Number(b.total ?? 0), 0);
-    const paid = nonVoid
-      .filter((b) => b.payment_status === "paid")
-      .reduce((s, b) => s + Number(b.total ?? 0), 0);
-    const pending = nonVoid
-      .filter((b) => b.payment_status !== "paid")
-      .reduce((s, b) => s + Number(b.total ?? 0), 0);
+    const paid = nonVoid.reduce((s, b) => s + Number(b.paid_amount ?? 0), 0);
+    const pending = total - paid;
+    //const pending = nonVoid.filter(b => b.payment_status !== "paid").reduce((s, b) => s + Number(b.total ?? 0), 0);
     return { count: filtered.length, total, paid, pending };
   }, [filtered]);
 
@@ -807,92 +791,54 @@ export default function BillsDashboard() {
   }
 
   function exportToExcel() {
-    const rows = filtered.map((bill) => ({
-      "Bill No.": bill.bill_number ?? "",
-      Type: bill.doc_type ?? "",
-      Client: bill.client_name ?? "",
-      Firm: issuers.find((i) => i.id === bill.issuer_id)?.firm_name ?? "",
-      "Bill Date": bill.bill_date?.slice(0, 10) ?? "",
-      "Paid Date": bill.paid_date?.slice(0, 10) ?? "",
-      "Amount (₹)": Number(bill.total ?? 0),
-      "Paid (₹)": Number(bill.paid_amount ?? 0),
-      "Balance (₹)": Number(bill.total ?? 0) - Number(bill.paid_amount ?? 0),
-      Status: bill.payment_status ?? "",
-      "Payment Mode": bill.payment_mode ?? "",
-      Template: bill.template ?? "",
-      "Bill Status": bill.status ?? "",
-    }));
+    import("https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs").then(
+      (XLSX) => {
+        const rows = filtered.map((bill) => ({
+          "Bill No.": bill.bill_number ?? "",
+          Type: bill.doc_type ?? "",
+          Client: bill.client_name ?? "",
+          Firm: issuers.find((i) => i.id === bill.issuer_id)?.firm_name ?? "",
+          "Bill Date": bill.bill_date?.slice(0, 10) ?? "",
+          "Paid Date": bill.paid_date?.slice(0, 10) ?? "",
+          "Amount (₹)": Number(bill.total ?? 0),
+          "Paid (₹)": Number(bill.paid_amount ?? 0),
+          "Balance (₹)":
+            Number(bill.total ?? 0) - Number(bill.paid_amount ?? 0),
+          Status: bill.payment_status ?? "",
+          "Payment Mode": bill.payment_mode ?? "",
+          Template: bill.template ?? "",
+          "Bill Status": bill.status ?? "",
+        }));
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [
-      { wch: 16 },
-      { wch: 10 },
-      { wch: 22 },
-      { wch: 22 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 14 },
-      { wch: 12 },
-      { wch: 14 },
-      { wch: 10 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 12 },
-    ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Bills");
-    const date = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `bills-export-${date}.xlsx`);
+        const ws = XLSX.utils.json_to_sheet(rows);
+        // Column widths
+        ws["!cols"] = [
+          { wch: 16 },
+          { wch: 10 },
+          { wch: 22 },
+          { wch: 22 },
+          { wch: 12 },
+          { wch: 12 },
+          { wch: 14 },
+          { wch: 12 },
+          { wch: 14 },
+          { wch: 10 },
+          { wch: 14 },
+          { wch: 14 },
+          { wch: 12 },
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Bills");
+        const date = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(wb, `bills-export-${date}.xlsx`);
+      },
+    );
   }
-  //   function exportToExcel() {
-  //     import("https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs").then(
-  //       (XLSX) => {
-  //         const rows = filtered.map((bill) => ({
-  //           "Bill No.": bill.bill_number ?? "",
-  //           Type: bill.doc_type ?? "",
-  //           Client: bill.client_name ?? "",
-  //           Firm: issuers.find((i) => i.id === bill.issuer_id)?.firm_name ?? "",
-  //           "Bill Date": bill.bill_date?.slice(0, 10) ?? "",
-  //           "Paid Date": bill.paid_date?.slice(0, 10) ?? "",
-  //           "Amount (₹)": Number(bill.total ?? 0),
-  //           "Paid (₹)": Number(bill.paid_amount ?? 0),
-  //           "Balance (₹)":
-  //             Number(bill.total ?? 0) - Number(bill.paid_amount ?? 0),
-  //           Status: bill.payment_status ?? "",
-  //           "Payment Mode": bill.payment_mode ?? "",
-  //           Template: bill.template ?? "",
-  //           "Bill Status": bill.status ?? "",
-  //         }));
-
-  //         const ws = XLSX.utils.json_to_sheet(rows);
-  //         // Column widths
-  //         ws["!cols"] = [
-  //           { wch: 16 },
-  //           { wch: 10 },
-  //           { wch: 22 },
-  //           { wch: 22 },
-  //           { wch: 12 },
-  //           { wch: 12 },
-  //           { wch: 14 },
-  //           { wch: 12 },
-  //           { wch: 14 },
-  //           { wch: 10 },
-  //           { wch: 14 },
-  //           { wch: 14 },
-  //           { wch: 12 },
-  //         ];
-  //         const wb = XLSX.utils.book_new();
-  //         XLSX.utils.book_append_sheet(wb, ws, "Bills");
-  //         const date = new Date().toISOString().slice(0, 10);
-  //         XLSX.writeFile(wb, `bills-export-${date}.xlsx`);
-  //       },
-  //     );
-  //   }
 
   function clearFilters() {
     setFilterFirm("");
     setFilterStatus("");
-    setFilterTemplate("");
+    setFilterMode("");
     setFilterDateFrom("");
     setFilterDateTo("");
     setSearch("");
@@ -901,7 +847,7 @@ export default function BillsDashboard() {
   const hasFilters =
     filterFirm ||
     filterStatus ||
-    filterTemplate ||
+    filterMode ||
     filterDateFrom ||
     filterDateTo ||
     search;
@@ -926,28 +872,26 @@ export default function BillsDashboard() {
     );
 
   return (
-    <div className="min-h-screen bg-blue-100 font-sans">
+    <div className="min-h-screen bg-slate-50 font-sans">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        {/* Doc type toggle */}
         <div className="flex justify-between">
-          {/* Doc type toggle */}
           <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 shadow-sm p-1.5 w-fit">
-            {["INVOICE", "QUOTATION"].map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setDocTypeFilter(type)}
-                className={`px-5 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                  docTypeFilter === type
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {type === "INVOICE" ? "Invoices" : "Quotations"}
-              </button>
-            ))}
-          </div>
-
-          {/* Excel export button */}
+          {["INVOICE", "QUOTATION"].map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setDocTypeFilter(type)}
+              className={`px-5 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                docTypeFilter === type
+                  ? "bg-slate-800 text-white"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {type === "INVOICE" ? "Invoices" : "Quotations"}
+            </button>
+          ))}
+        </div>
           <button
             onClick={exportToExcel}
             className="shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm transition-colors"
@@ -968,6 +912,7 @@ export default function BillsDashboard() {
             Export Excel
           </button>
         </div>
+        
 
         {/* Summary Cards */}
         <div className="flex items-center justify-between gap-4">
@@ -993,25 +938,7 @@ export default function BillsDashboard() {
               accent="text-amber-600"
             />
           </div>
-          {/* <button
-            onClick={exportToExcel}
-            className="shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm transition-colors"
-          >
-            <svg
-              className="w-4 h-4 text-emerald-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-              />
-            </svg>
-            Export Excel
-          </button> */}
+          
         </div>
 
         {/* Filters */}
@@ -1081,17 +1008,19 @@ export default function BillsDashboard() {
 
             <div>
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1">
-                Template
+                Mode
               </label>
               <select
-                value={filterTemplate}
-                onChange={(e) => setFilterTemplate(e.target.value)}
+                value={filterMode}
+                onChange={(e) => setFilterMode(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 bg-slate-50"
               >
-                <option value="">All Templates</option>
-                <option value="with_logo">Logo + Firm</option>
-                <option value="without_logo">Firm Only</option>
-                <option value="plain">Plain</option>
+                <option value="">All Modes</option>
+                {paymentModes.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -1293,7 +1222,7 @@ export default function BillsDashboard() {
           bill={partialTarget}
           modes={paymentModes}
           onAddMode={handleAddMode}
-          onConfirm={handleStatusConfirm}
+          onChanged={handleUpdated}
           onCancel={() => setPartialTarget(null)}
         />
       )}
@@ -1309,3 +1238,4 @@ export default function BillsDashboard() {
     </div>
   );
 }
+

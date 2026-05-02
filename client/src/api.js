@@ -60,6 +60,11 @@ export const getAllBankNames = () => api.get("/api/bank/names");
 export const getPaymentModes = () => api.get("/api/payment-modes");
 export const createPaymentMode = (data) => api.post("/api/payment-modes", data);
 
+// Payments
+export const getPayments = (invoiceId) => api.get(`/api/payments/${invoiceId}`);
+export const addPayment = (data) => api.post("/api/payments", data);
+export const deletePayment = (id) => api.delete(`/api/payments/${id}`);
+
 // ── Bootstrap ──────────────────────────────────────────────────────────────
 export const bootstrap = () => api.get("/api/app/bootstrap");
 

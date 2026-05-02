@@ -2,8 +2,10 @@
 // Reads template from data.template saved at bill creation — no toggle needed.
 
 import { useEffect, useState } from "react";
+import { PDFDownloadLink } from "@react-pdf/renderer";
 import { useNavigate } from "react-router-dom";
 import { getBill } from "../api";
+import InvoicePDF from "./InvoicePDF";
 import InvoiceTemplate from "./InvoiceTemplate";
 
 export default function InvoicePreview({ id }) {
@@ -59,6 +61,13 @@ export default function InvoicePreview({ id }) {
         >
           Print / Save PDF
         </button>
+        <PDFDownloadLink
+          document={<InvoicePDF data={data} />}
+          fileName={`invoice-${data?.bill_number ?? id}.pdf`}
+          className="px-3 py-1 text-sm rounded bg-slate-800 text-white hover:bg-slate-900 transition"
+        >
+          {({ loading }) => (loading ? "Generating..." : "Download PDF")}
+        </PDFDownloadLink>
       </div>
 
       {/* Invoice */}

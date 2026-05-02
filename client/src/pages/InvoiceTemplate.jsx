@@ -53,12 +53,6 @@ function ItemsTable({ data, plain = false }) {
             <th className="border border-slate-300 p-2 text-left text-sm font-semibold text-slate-700">
               Description
             </th>
-            <th className="border border-slate-300 p-2 text-right text-sm font-semibold text-slate-700 w-[25mm]">
-              Qty
-            </th>
-            <th className="border border-slate-300 p-2 text-right text-sm font-semibold text-slate-700 w-[30mm]">
-              Rate (₹)
-            </th>
             <th className="border border-slate-300 p-2 text-right text-sm font-semibold text-slate-700 w-[35mm]">
               Amount (₹)
             </th>
@@ -75,57 +69,28 @@ function ItemsTable({ data, plain = false }) {
         )}
       </thead>
       <tbody>
-        {items.map((item, i) =>
-          plain ? (
-            <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-              <td className="border border-slate-200 p-2 text-sm text-slate-700">
-                {item.description}
-              </td>
-              <td className="border border-slate-200 p-2 text-right text-sm text-slate-700">
-                {item.quantity}
-              </td>
-              <td className="border border-slate-200 p-2 text-right text-sm text-slate-700">
-                {formatAmount(item.rate)}
-              </td>
-              <td className="border border-slate-200 p-2 text-right text-sm text-slate-700">
-                {formatAmount(item.amount)}
-              </td>
-            </tr>
-          ) : (
-            <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-              <td className="border border-slate-200 p-2 text-sm text-slate-700">
-                {item.description}
-              </td>
-              <td className="border border-slate-200 p-2 text-right text-sm text-slate-700">
-                {formatAmount(item.amount)}
-              </td>
-            </tr>
-          ),
-        )}
+        {items.map((item, i) => (
+          <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+            <td className="border border-slate-200 p-2 text-sm text-slate-700">
+              {item.description}
+            </td>
+            <td className="border border-slate-200 p-2 text-right text-sm text-slate-700">
+              {formatAmount(item.amount)}
+            </td>
+          </tr>
+        ))}
 
         {/* Spacer rows — blank bordered rows for visual padding */}
-        {Array.from({ length: spacer_rows }).map((_, i) =>
-          plain ? (
-            <tr key={`spacer-${i}`} className="h-6">
-              <td className="border border-slate-200 px-2 py-1">&nbsp;</td>
-              <td className="border border-slate-200 px-2 py-1">&nbsp;</td>
-              <td className="border border-slate-200 px-2 py-1">&nbsp;</td>
-              <td className="border border-slate-200 px-2 py-1">&nbsp;</td>
-            </tr>
-          ) : (
-            <tr key={`spacer-${i}`} className="h-6">
-              <td className="border border-slate-200 px-2 py-1">&nbsp;</td>
-              <td className="border border-slate-200 px-2 py-1">&nbsp;</td>
-            </tr>
-          ),
-        )}
+        {Array.from({ length: spacer_rows }).map((_, i) => (
+          <tr key={`spacer-${i}`} className="h-6">
+            <td className="border border-slate-200 px-2 py-1">&nbsp;</td>
+            <td className="border border-slate-200 px-2 py-1">&nbsp;</td>
+          </tr>
+        ))}
 
         {showSubtotal && (
           <tr>
-            <td
-              colSpan={plain ? 3 : 1}
-              className="border border-slate-200 p-2 text-right text-sm font-medium text-slate-600"
-            >
+            <td className="border border-slate-200 p-2 text-right text-sm font-medium text-slate-600">
               Subtotal
             </td>
             <td className="border border-slate-200 p-2 text-right text-sm text-slate-700">
@@ -135,10 +100,7 @@ function ItemsTable({ data, plain = false }) {
         )}
         {showDiscount && (
           <tr>
-            <td
-              colSpan={plain ? 3 : 1}
-              className="border border-slate-200 p-2 text-right text-sm text-red-600"
-            >
+            <td className="border border-slate-200 p-2 text-right text-sm text-red-600">
               Discount
             </td>
             <td className="border border-slate-200 p-2 text-right text-sm text-red-600">
@@ -148,10 +110,7 @@ function ItemsTable({ data, plain = false }) {
         )}
         {showTax && is_igst === 1 && (
           <tr>
-            <td
-              colSpan={plain ? 3 : 1}
-              className="border border-slate-200 p-2 text-right text-sm text-slate-600"
-            >
+            <td className="border border-slate-200 p-2 text-right text-sm text-slate-600">
               IGST
             </td>
             <td className="border border-slate-200 p-2 text-right text-sm text-slate-700">
@@ -162,10 +121,7 @@ function ItemsTable({ data, plain = false }) {
         {showTax && is_igst === 0 && (
           <>
             <tr>
-              <td
-                colSpan={plain ? 3 : 1}
-                className="border border-slate-200 p-2 text-right text-sm text-slate-600"
-              >
+              <td className="border border-slate-200 p-2 text-right text-sm text-slate-600">
                 CGST
               </td>
               <td className="border border-slate-200 p-2 text-right text-sm text-slate-700">
@@ -173,10 +129,7 @@ function ItemsTable({ data, plain = false }) {
               </td>
             </tr>
             <tr>
-              <td
-                colSpan={plain ? 3 : 1}
-                className="border border-slate-200 p-2 text-right text-sm text-slate-600"
-              >
+              <td className="border border-slate-200 p-2 text-right text-sm text-slate-600">
                 SGST
               </td>
               <td className="border border-slate-200 p-2 text-right text-sm text-slate-700">
@@ -186,10 +139,7 @@ function ItemsTable({ data, plain = false }) {
           </>
         )}
         <tr className="bg-slate-800 text-white">
-          <td
-            colSpan={plain ? 3 : 1}
-            className="border border-slate-700 p-2 text-right font-bold"
-          >
+          <td className="border border-slate-700 p-2 text-right font-bold">
             Total
           </td>
           <td className="border border-slate-700 p-2 text-right font-bold">
@@ -197,10 +147,7 @@ function ItemsTable({ data, plain = false }) {
           </td>
         </tr>
         <tr>
-          <td
-            colSpan={plain ? 4 : 2}
-            className="border border-slate-200 p-2 text-sm"
-          >
+          <td colSpan={2} className="border border-slate-200 p-2 text-sm">
             <span className="font-semibold">In Words: </span>
             {total_in_words}
           </td>

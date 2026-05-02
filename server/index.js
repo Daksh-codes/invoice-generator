@@ -13,6 +13,7 @@ const bankRoute = require("./routes/bankRoutes");
 const billRoutes = require("./routes/billRoute.js");
 const appRoutes = require("./routes/appRoutes");
 const paymentModeRoutes = require("./routes/paymentModeRoutes.js");
+const paymentRoutes = require("./routes/paymentRoutes.js");
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/api/bank", bankRoute);
 app.use("/api/bills", billRoutes);
 app.use("/api/app", appRoutes);
 app.use("/api/payment-modes", paymentModeRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.get("/health", (req, res) => {
   res.send("OK");

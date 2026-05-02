@@ -125,6 +125,19 @@ db.exec(`
     label TEXT NOT NULL UNIQUE
   );
 
+  CREATE TABLE IF NOT EXISTS payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    invoice_id INTEGER NOT NULL,
+    amount REAL NOT NULL CHECK(amount > 0),
+    mode TEXT,
+    payment_date TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (invoice_id) REFERENCES invoice(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_payments_invoice_id
+    ON payments(invoice_id);
+
   INSERT OR IGNORE INTO payment_modes (label) VALUES ('Cash'), ('UPI'), ('Bank Transfer');
 
   -- migrations table still exists so the migration runner on existing DBs
@@ -139,6 +152,8 @@ db.exec(`
   INSERT OR IGNORE INTO migrations (version) VALUES (4);
   INSERT OR IGNORE INTO migrations (version) VALUES (5);
   INSERT OR IGNORE INTO migrations (version) VALUES (6);
+  INSERT OR IGNORE INTO migrations (version) VALUES (7);
+  INSERT OR IGNORE INTO migrations (version) VALUES (8);
 `);
 
 console.log("✅ Tables created");
