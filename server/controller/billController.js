@@ -1,4 +1,5 @@
 const db = require("../db");
+const { recalculateInvoicePayment } = require("./paymentController");
 
 // ── Prepared statements ────────────────────────────────────────────────────
 
@@ -449,33 +450,89 @@ function updateStatus(req, res) {
   try {
     const body = req.body ?? {};
     const { payment_status, paid_amount, payment_mode, paid_date } = body;
-    
-    const values = [
-      payment_status ?? null,
-      paid_amount != null ? Number(paid_amount) : null,
-      payment_mode ?? null,
-      paid_date ?? null,
-      req.params.id,
-    ];
-    
-    console.log("values:", values);  // ← and this
-    
-    db.prepare(`
-      UPDATE invoice SET
-        payment_status = COALESCE(?, payment_status),
-        paid_amount    = COALESCE(?, paid_amount),
-        payment_mode   = COALESCE(?, payment_mode),
-        paid_date      = COALESCE(?, paid_date)
-      WHERE id = ?
-    `).run(...values);
-    
-    res.json({ ok: true });
+
+    const bill = db
+      .prepare("SELECT id, total, status FROM invoice WHERE id = ?")
+      .get(req.params.id);
+    if (!bill) return res.status(404).json({ message: "Bill not found" });
+    if (bill.status !== "active") {
+      return res
+        .status(400)
+        .json({ message: "Only active bills can change payment status" });
+    }
+
+    if (payment_status === "unpaid") {
+      db.prepare("DELETE FROM payments WHERE invoice_id = ?").run(req.params.id);
+    } else if (paid_amount != null) {
+      const targetPaid =
+        payment_status === "paid" ? Number(bill.total ?? 0) : Number(paid_amount);
+      if (Number.isNaN(targetPaid) || targetPaid < 0) {
+        return res
+          .status(400)
+          .json({ message: "paid_amount must be a valid number" });
+      }
+
+      const currentPaid = Number(
+        db
+          .prepare(
+            "SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE invoice_id = ?",
+          )
+          .get(req.params.id).total ?? 0,
+      );
+      const amountToAdd = targetPaid - currentPaid;
+      if (amountToAdd > 0.0001) {
+        db.prepare(
+          `
+          INSERT INTO payments (invoice_id, amount, mode, payment_date)
+          VALUES (?, ?, ?, ?)
+        `,
+        ).run(
+          req.params.id,
+          amountToAdd,
+          payment_mode ?? null,
+          paid_date ?? new Date().toISOString().slice(0, 10),
+        );
+      }
+    } else if (payment_mode !== undefined || paid_date !== undefined) {
+      const latestPayment = db
+        .prepare(
+          `
+          SELECT id
+          FROM payments
+          WHERE invoice_id = ?
+          ORDER BY payment_date DESC, id DESC
+          LIMIT 1
+        `,
+        )
+        .get(req.params.id);
+
+      if (latestPayment) {
+        db.prepare(
+          `
+          UPDATE payments SET
+            mode = COALESCE(?, mode),
+            payment_date = COALESCE(?, payment_date)
+          WHERE id = ?
+        `,
+        ).run(payment_mode ?? null, paid_date ?? null, latestPayment.id);
+      } else {
+        db.prepare(
+          `
+          UPDATE invoice SET
+            payment_mode = COALESCE(?, payment_mode),
+            paid_date = COALESCE(?, paid_date)
+          WHERE id = ?
+        `,
+        ).run(payment_mode ?? null, paid_date ?? null, req.params.id);
+      }
+    }
+
+    const invoice = recalculateInvoicePayment(req.params.id);
+    res.json({ ok: true, invoice });
   } catch (err) {
-    console.error("updateStatus error:", err.message);  // ← and this
     res.status(500).json({ message: err.message });
   }
 }
-
 function getByStatus(req, res) {
   const { status } = req.params;
   const doc_type = req.query.doc_type || "INVOICE";
@@ -593,3 +650,4 @@ module.exports = {
   unvoidBill,
   updateBill
 };
+
