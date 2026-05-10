@@ -30,12 +30,20 @@ app.use("/api/app", appRoutes);
 app.use("/api/payment-modes", paymentModeRoutes);
 app.use("/api/payments", paymentRoutes);
 
+
 app.get("/health", (req, res) => {
   res.send("OK");
 });
 
+
+console.log("Static path:", path.join(__dirname, "../client/dist"));
 app.use(express.static(path.join(__dirname, "../client/dist")));
-app.get(/^(?!\/api|\/images).*$/, (req, res) => {
+//app.use(express.static(path.join(__dirname, "../client/dist")));
+// app.get(/^(?!\/api|\/images).*$/, (req, res) => {
+//   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+// });
+
+app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
 

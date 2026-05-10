@@ -4,6 +4,7 @@
   "description": "Server for invoice generator system",
   "main": "index.js",
   "scripts": {
+    "start": "node server.js",
     "db:init": "node scripts/initDb.js",
     "test:routes": "node scripts/testRoutes.js",
     "dev": "nodemon server.js"
