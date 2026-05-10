@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
+    "postinstall": "npm rebuild better-sqlite3",
     "db:init": "node scripts/initDb.js",
     "test:routes": "node scripts/testRoutes.js",
     "dev": "nodemon server.js"
