@@ -1,6 +1,8 @@
 // src/pages/BillsDashboard.jsx
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import eye from "../assets/eye.png";
+import eyeCrossed from "../assets/eye-crossed.png";
 import {
   getAllBills,
   getAllIssuers,
@@ -65,86 +67,86 @@ const STATUS_STYLES = {
 };
 
 // ── Shared: Mode dropdown with inline add ─────────────────────────────────
-function ModeDropdown({ current, modes, onSelect, onAddMode }) {
-  const [open, setOpen] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [newLabel, setNewLabel] = useState("");
-  const ref = useRef();
+// function ModeDropdown({ current, modes, onSelect, onAddMode }) {
+//   const [open, setOpen] = useState(false);
+//   const [adding, setAdding] = useState(false);
+//   const [newLabel, setNewLabel] = useState("");
+//   const ref = useRef();
 
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-        setAdding(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+//   useEffect(() => {
+//     function handleClickOutside(e) {
+//       if (ref.current && !ref.current.contains(e.target)) {
+//         setOpen(false);
+//         setAdding(false);
+//       }
+//     }
+//     document.addEventListener("mousedown", handleClickOutside);
+//     return () => document.removeEventListener("mousedown", handleClickOutside);
+//   }, []);
 
-  async function handleAdd() {
-    const label = newLabel.trim();
-    if (!label) return;
+//   async function handleAdd() {
+//     const label = newLabel.trim();
+//     if (!label) return;
 
-    const created = await onAddMode(label);
-    if (created) onSelect(created.label);
+//     const created = await onAddMode(label);
+//     if (created) onSelect(created.label);
 
-    setAdding(false);
-    setNewLabel("");
-    setOpen(false);
-  }
+//     setAdding(false);
+//     setNewLabel("");
+//     setOpen(false);
+//   }
 
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="text-xs text-slate-500 flex items-center gap-1"
-      >
-        {current ?? "Set mode"}
-      </button>
+//   return (
+//     <div ref={ref} className="relative">
+//       <button
+//         onClick={() => setOpen((o) => !o)}
+//         className="text-xs text-slate-500 flex items-center gap-1"
+//       >
+//         {current ?? "Set mode"}
+//       </button>
 
-      {open && (
-        <div className="absolute z-50 left-0 mt-1 bg-white rounded-lg shadow-lg border py-1 min-w-[140px]">
-          {modes.map((m) => (
-            <button
-              key={m}
-              onClick={() => {
-                onSelect(m);
-                setOpen(false);
-              }}
-              className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50"
-            >
-              {m}
-            </button>
-          ))}
+//       {open && (
+//         <div className="absolute z-50 left-0 mt-1 bg-white rounded-lg shadow-lg border py-1 min-w-[140px]">
+//           {modes.map((m) => (
+//             <button
+//               key={m}
+//               onClick={() => {
+//                 onSelect(m);
+//                 setOpen(false);
+//               }}
+//               className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50"
+//             >
+//               {m}
+//             </button>
+//           ))}
 
-          <div className="border-t mt-1 pt-1">
-            {adding ? (
-              <div className="px-2 py-1 flex gap-1">
-                <input
-                  value={newLabel}
-                  onChange={(e) => setNewLabel(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAdd();
-                  }}
-                  className="flex-1 text-xs border px-2 py-1"
-                />
-                <button onClick={handleAdd}>Add</button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setAdding(true)}
-                className="w-full text-left px-3 py-1.5 text-xs text-blue-600"
-              >
-                + Add new
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+//           <div className="border-t mt-1 pt-1">
+//             {adding ? (
+//               <div className="px-2 py-1 flex gap-1">
+//                 <input
+//                   value={newLabel}
+//                   onChange={(e) => setNewLabel(e.target.value)}
+//                   onKeyDown={(e) => {
+//                     if (e.key === "Enter") handleAdd();
+//                   }}
+//                   className="flex-1 text-xs border px-2 py-1"
+//                 />
+//                 <button onClick={handleAdd}>Add</button>
+//               </div>
+//             ) : (
+//               <button
+//                 onClick={() => setAdding(true)}
+//                 className="w-full text-left px-3 py-1.5 text-xs text-blue-600"
+//               >
+//                 + Add new
+//               </button>
+//             )}
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
 
 function StatusBadge({ status }) {
   const s = STATUS_STYLES[status?.toLowerCase()] ?? STATUS_STYLES.unpaid;
@@ -159,17 +161,35 @@ function StatusBadge({ status }) {
 }
 
 function SummaryCard({ label, value, sub, accent }) {
+  const [hide, setHide] = useState(true);
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-1 shadow-sm hover:shadow-md transition-shadow">
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-widest">
-        {label}
-      </p>
-      <p
-        className={`text-2xl font-bold tracking-tight ${accent ?? "text-slate-800"}`}
-      >
-        {value}
-      </p>
-      {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+    <div className="bg-white rounded-xl border border-slate-200 p-5 flex justify-between shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-medium text-slate-400 uppercase tracking-widest">
+          {label}
+        </p>
+        <p
+          className={`text-2xl font-bold tracking-tight ${accent ?? "text-slate-800"}`}
+        >
+          {hide ? '****' : value}
+        </p>
+        {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+      </div>
+      {hide ? (
+        <img
+          src={eyeCrossed}
+          alt=""
+          className="w-4 h-4"
+          onClick={() => setHide(!hide)}
+        />
+      ) : (
+        <img
+          src={eye}
+          alt=""
+          className="w-4 h-4"
+          onClick={() => setHide(!hide)}
+        />
+      )}
     </div>
   );
 }
@@ -239,7 +259,8 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
         setPayments(res.data.payments ?? []);
         if (res.data.invoice) onChanged(bill.id, res.data.invoice);
       } catch (err) {
-        if (alive) setError(err.response?.data?.message ?? "Failed to load payments.");
+        if (alive)
+          setError(err.response?.data?.message ?? "Failed to load payments.");
       } finally {
         if (alive) setLoading(false);
       }
@@ -298,21 +319,31 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
               {bill.bill_number} - Total {formatAmount(bill.total)}
             </p>
           </div>
-          <StatusBadge status={balance <= 0 ? "paid" : paidSoFar > 0 ? "partial" : "unpaid"} />
+          <StatusBadge
+            status={
+              balance <= 0 ? "paid" : paidSoFar > 0 ? "partial" : "unpaid"
+            }
+          />
         </div>
 
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-lg bg-slate-50 px-3 py-2">
             <p className="text-xs text-slate-400">Paid so far</p>
-            <p className="text-sm font-semibold text-emerald-600">{formatAmount(paidSoFar)}</p>
+            <p className="text-sm font-semibold text-emerald-600">
+              {formatAmount(paidSoFar)}
+            </p>
           </div>
           <div className="rounded-lg bg-slate-50 px-3 py-2">
             <p className="text-xs text-slate-400">Balance</p>
-            <p className="text-sm font-semibold text-amber-600">{formatAmount(balance)}</p>
+            <p className="text-sm font-semibold text-amber-600">
+              {formatAmount(balance)}
+            </p>
           </div>
           <div className="rounded-lg bg-slate-50 px-3 py-2">
             <p className="text-xs text-slate-400">After new payment</p>
-            <p className="text-sm font-semibold text-slate-800">{formatAmount(balanceAfter)}</p>
+            <p className="text-sm font-semibold text-slate-800">
+              {formatAmount(balanceAfter)}
+            </p>
           </div>
         </div>
 
@@ -321,16 +352,27 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
             Previous payments
           </div>
           {loading ? (
-            <div className="px-3 py-5 text-sm text-slate-400">Loading payments...</div>
+            <div className="px-3 py-5 text-sm text-slate-400">
+              Loading payments...
+            </div>
           ) : payments.length === 0 ? (
-            <div className="px-3 py-5 text-sm text-slate-400">No payments recorded yet.</div>
+            <div className="px-3 py-5 text-sm text-slate-400">
+              No payments recorded yet.
+            </div>
           ) : (
             <div className="divide-y divide-slate-100 max-h-52">
               {payments.map((payment) => (
-                <div key={payment.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center px-3 py-2 text-sm">
-                  <span className="text-slate-500">{formatDate(payment.payment_date)}</span>
+                <div
+                  key={payment.id}
+                  className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center px-3 py-2 text-sm"
+                >
+                  <span className="text-slate-500">
+                    {formatDate(payment.payment_date)}
+                  </span>
                   <span className="text-slate-600">{payment.mode ?? "-"}</span>
-                  <span className="font-medium text-slate-800 text-right">{formatAmount(payment.amount)}</span>
+                  <span className="font-medium text-slate-800 text-right">
+                    {formatAmount(payment.amount)}
+                  </span>
                   <button
                     type="button"
                     disabled={saving}
@@ -373,7 +415,9 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
                 className="min-w-0 flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white"
               >
                 {modes.map((m) => (
-                  <option key={m} value={m}>{m}</option>
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
                 ))}
               </select>
               <button
@@ -404,7 +448,13 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
           <button
             type="button"
             onClick={handleAddPayment}
-            disabled={saving || loading || !newAmount || newAmount <= 0 || newAmount > balance}
+            disabled={
+              saving ||
+              loading ||
+              !newAmount ||
+              newAmount <= 0 ||
+              newAmount > balance
+            }
             className="px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap"
           >
             Add Payment
@@ -589,7 +639,9 @@ function StatusDropdown({
               onClick={(e) => handleSelect(e, s)}
               className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 flex items-center gap-2"
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_STYLES[s].dot}`} />
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${STATUS_STYLES[s].dot}`}
+              />
               {STATUS_STYLES[s].label}
             </button>
           ))}
@@ -610,7 +662,6 @@ function StatusDropdown({
 
 // ── Payment Mode Cell ──────────────────────────────────────────────────────
 function PaymentModeCell({ bill, modes, onAddMode, onUpdated }) {
-
   if (bill.status === "void" || bill.payment_status === "unpaid") {
     return <span className="text-slate-300 text-xs">—</span>;
   }
@@ -626,12 +677,13 @@ function PaymentModeCell({ bill, modes, onAddMode, onUpdated }) {
   }
 
   return (
-    <ModeDropdown
-      current={bill.payment_mode}
-      modes={modes}
-      onSelect={handleSelect}
-      onAddMode={onAddMode}
-    />
+    // <ModeDropdown
+    //   current={bill.payment_mode}
+    //   modes={modes}
+    //   // onSelect={handleSelect}
+    //   onAddMode={onAddMode}
+    // />
+   bill.payment_mode
   );
 }
 
@@ -877,21 +929,21 @@ export default function BillsDashboard() {
         {/* Doc type toggle */}
         <div className="flex justify-between">
           <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 shadow-sm p-1.5 w-fit">
-          {["INVOICE", "QUOTATION"].map((type) => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => setDocTypeFilter(type)}
-              className={`px-5 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                docTypeFilter === type
-                  ? "bg-slate-800 text-white"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {type === "INVOICE" ? "Invoices" : "Quotations"}
-            </button>
-          ))}
-        </div>
+            {["INVOICE", "QUOTATION"].map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setDocTypeFilter(type)}
+                className={`px-5 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  docTypeFilter === type
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {type === "INVOICE" ? "Invoices" : "Quotations"}
+              </button>
+            ))}
+          </div>
           <button
             onClick={exportToExcel}
             className="shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm transition-colors"
@@ -912,7 +964,6 @@ export default function BillsDashboard() {
             Export Excel
           </button>
         </div>
-        
 
         {/* Summary Cards */}
         <div className="flex items-center justify-between gap-4">
@@ -938,7 +989,6 @@ export default function BillsDashboard() {
               accent="text-amber-600"
             />
           </div>
-          
         </div>
 
         {/* Filters */}
@@ -1154,7 +1204,7 @@ export default function BillsDashboard() {
                             bill={bill}
                             modes={paymentModes}
                             onAddMode={handleAddMode}
-                            onUpdated={handleUpdated}
+                            // onUpdated={handleUpdated}
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -1238,4 +1288,3 @@ export default function BillsDashboard() {
     </div>
   );
 }
-
