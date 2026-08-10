@@ -95,6 +95,18 @@ npm run build
 netsh advfirewall firewall add rule name="Invoice App" dir=in action=allow protocol=TCP localport=3000
 ```
 
+### Configuration
+
+Set the app port in `App/config.json`:
+
+```json
+{
+  "port": 3000
+}
+```
+
+If you change the port, use the same value in the Windows Firewall command.
+
 ### Start the app
 ```bash
 cd server
@@ -103,7 +115,7 @@ node index.js
 
 Or double-click `start.bat` from the project root.
 
-Open in browser: `http://localhost:3000`
+Open in browser: `http://localhost:3000` by default, or use the port set in `App/config.json`.
 
 ## LAN Access (Other Office PCs)
 
@@ -112,7 +124,7 @@ Find the hostname of the PC running the server:
 hostname
 ```
 
-Other devices on the same WiFi/network open:
+Other devices on the same WiFi/network open, using the port set in `App/config.json`:
 ```
 http://HOSTNAME:3000
 ```
@@ -137,12 +149,14 @@ cd client
 npm run dev
 ```
 
-Add Vite proxy in `client/vite.config.js` for API calls to work in dev:
+The Vite proxy in `client/vite.config.js` reads the same `App/config.json` port:
 ```js
+const apiUrl = `http://localhost:${config.port}`
+
 server: {
   proxy: {
-    '/api': 'http://localhost:3000',
-    '/images': 'http://localhost:3000',
+    '/api': apiUrl,
+    '/images': apiUrl,
   }
 }
 ```
