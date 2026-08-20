@@ -2,6 +2,8 @@
 // Only runs on existing databases that were created before initDb.js had the full schema.
 // Fresh databases created via initDb.js already have all columns — migrations are pre-marked done.
 
+const { createCurrentSchema } = require("./schema.js");
+
 const migrations = [
   {
     version: 1,
@@ -158,6 +160,19 @@ function runMigrations(db) {
   db.prepare(
     `CREATE TABLE IF NOT EXISTS migrations (version INTEGER PRIMARY KEY)`,
   ).run();
+
+  const hasInvoiceTable = db
+    .prepare(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'invoice'",
+    )
+    .get();
+
+  if (!hasInvoiceTable) {
+    console.log("No invoice table found; creating current database schema...");
+    createCurrentSchema(db, { markMigrations: true });
+    console.log("Database schema created, no migrations to run");
+    return;
+  }
 
   const applied = db
     .prepare(`SELECT version FROM migrations`)
