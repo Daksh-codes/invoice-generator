@@ -1,5 +1,7 @@
 // scripts/testRoutes.js
-const BASE = "http://localhost:3000/api";
+const config = require("../config.js");
+
+const BASE = `http://localhost:${config.port}/api`;
 
 let passed = 0;
 let failed = 0;

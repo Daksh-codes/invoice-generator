@@ -1,4 +1,4 @@
-const SERVER = "http://localhost:3000";
+import { imageUrl } from "../api";
 
 const fmtAmount = (n) => Number(n || 0).toLocaleString("en-IN");
 
@@ -61,7 +61,7 @@ export default function InvoiceTemplate({ data, variant = "full" }) {
             <div className="flex gap-4 items-center">
               {showLogo && (
                 <img
-                  src={`${SERVER}/uploads/${logo}`}
+                  src={imageUrl(logo)}
                   alt="Logo"
                   className="w-[15%] object-contain"
                 />
@@ -227,7 +227,7 @@ export default function InvoiceTemplate({ data, variant = "full" }) {
             <p>For {firm_name}</p>
             {signature_image ? (
               <img
-                src={`${SERVER}/uploads/${signature_image}`}
+                src={imageUrl(signature_image)}
                 alt="Signature"
                 className="h-12 mt-2 object-contain"
               />
@@ -266,7 +266,7 @@ export default function InvoiceTemplate({ data, variant = "full" }) {
           {upi_qr && (
             <div className="flex flex-col items-center">
               <img
-                src={`${SERVER}/uploads/${upi_qr}`}
+                src={imageUrl(upi_qr)}
                 alt="QR"
                 className="border w-[28mm] h-[28mm] object-contain"
               />

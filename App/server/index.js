@@ -3,7 +3,7 @@ const express = require("express");
 const db = require("./db.js");
 const runMigrations = require("./scripts/migrate.js");
 const path = require("path");
-const config = require("../config.json");
+const config = require("./config.js");
 
 // Run migrations FIRST before any controller is required
 runMigrations(db);

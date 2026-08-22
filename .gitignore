@@ -13,6 +13,7 @@ build/
 .env
 .env.*
 !.env.example
+App/config.json
 
 # Local data
 data/

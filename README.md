@@ -97,11 +97,12 @@ netsh advfirewall firewall add rule name="Invoice App" dir=in action=allow proto
 
 ### Configuration
 
-Set the app port in `App/config.json`:
+Copy `App/config.example.json` to `App/config.json`, then set the app port and backup folder:
 
 ```json
 {
-  "port": 3000
+  "port": 3000,
+  "backupUrl": "%USERPROFILE%\\Desktop\\InvoiceBackups"
 }
 ```
 
@@ -133,7 +134,7 @@ This works even if the IP address changes — hostname stays the same.
 
 ## Backup
 
-Double-click `backup.bat` to copy the database to `Desktop\InvoiceBackups\` with a timestamp.
+Double-click `backup.bat` to copy the database to the `backupUrl` folder in `App/config.json` with a timestamp.
 
 > The server must be stopped before running the backup, or the file may be locked.
 

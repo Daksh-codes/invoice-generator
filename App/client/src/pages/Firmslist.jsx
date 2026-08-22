@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllIssuers, deleteIssuer } from "../api";
+import { getAllIssuers, deleteIssuer, imageUrl } from "../api";
 
 export default function FirmsList() {
   const navigate = useNavigate();
@@ -92,7 +92,7 @@ export default function FirmsList() {
                       <div className="flex items-center gap-3">
                         {firm.logo ? (
                           <img
-                            src={`http://localhost:3000${firm.logo}`}
+                            src={imageUrl(firm.logo)}
                             alt="logo"
                             className="w-8 h-8 object-contain rounded border border-slate-100"
                           />

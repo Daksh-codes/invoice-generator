@@ -6,8 +6,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const configPath = path.resolve(__dirname, '../config.json')
+const exampleConfigPath = path.resolve(__dirname, '../config.example.json')
 const config = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, '../config.json'), 'utf-8')
+  fs.readFileSync(fs.existsSync(configPath) ? configPath : exampleConfigPath, 'utf-8')
 )
 const apiUrl = `http://localhost:${config.port}`
 
