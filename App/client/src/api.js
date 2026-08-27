@@ -68,7 +68,21 @@ export const deletePayment = (id) => api.delete(`/api/payments/${id}`);
 // ── Bootstrap ──────────────────────────────────────────────────────────────
 export const bootstrap = () => api.get("/api/app/bootstrap");
 
+export const getSettings = () => api.get("/api/settings");
+export const getNetworkInfo = () => api.get("/api/network-info");
+export const checkForUpdates = () => api.get("/api/check-update");
+export const updateSettings = (data) => api.put("/api/settings", data);
+
 // ── Image helper — relative path, works on any host ───────────────────────
 export const imageUrl = (path) => path ?? null;
+
+
+// ── App Update Routes ───────────────────────
+export function applyUpdate() {
+  return api.post('/api/apply-update');
+}
+export function installUpdate() {
+  return api.post('/api/install-update');
+}
 
 export default api;
