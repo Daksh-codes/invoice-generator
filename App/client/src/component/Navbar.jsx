@@ -159,7 +159,7 @@ export default function Navbar() {
               </svg>
             </div>
             <span className="text-sm font-bold text-slate-800 tracking-tight">
-              InvoiceApp
+              InvoiceDesk
             </span>
           </div>
         </a>

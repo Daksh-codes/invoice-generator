@@ -116,7 +116,7 @@ app.post('/api/apply-update', localOnly, async (req, res) => {
 
   try {
     const latest = await getLatestRelease();
-    const appAsset = latest.assets?.find(a => a.name.startsWith('InvoiceApp-Update-'));
+    const appAsset = latest.assets?.find(a => a.name.startsWith('InvoiceDesk-Update-'));
 
     if (!appAsset) {
       return res.status(500).json({ error: 'Update package not found in latest release.' });
