@@ -1,7 +1,7 @@
 // src/pages/BillForm.jsx
 // Route: /bills/new
 // Features:
-//   - Invoice or Quotation toggle
+//   - Invoice or Miscellaneous toggle
 //   - Firm dropdown (required)
 //   - Client dropdown + inline "create new" if typed name doesn't exist
 //   - Line items (description + amount, CA style)
@@ -528,7 +528,7 @@ export default function BillForm() {
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                {type === "INVOICE" ? "Invoice" : "Quotation"}
+                {type === "INVOICE" ? "Invoice" : "Miscellaneous"}
               </button>
             ))}
           </div>
@@ -642,7 +642,7 @@ export default function BillForm() {
 
             {/* Bill number preview */}
             <Field
-              label={docType === "INVOICE" ? "Invoice No." : "Quotation No."}
+              label={docType === "INVOICE" ? "Invoice No." : "Miscellaneous No."}
             >
               <input
                 value={nextNumber || "— select a firm —"}
@@ -978,7 +978,7 @@ export default function BillForm() {
             )}
             {loading
               ? "Creating…"
-              : `Create ${docType === "INVOICE" ? "Invoice" : "Quotation"}`}
+              : `Create ${docType === "INVOICE" ? "Invoice" : "Miscellaneous"}`}
           </button>
         </div>
       </div>

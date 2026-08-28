@@ -397,6 +397,7 @@ function getAll(req, res) {
       invoice.payment_status,
       invoice.paid_date, 
       invoice.payment_mode, 
+      invoice.transaction_number,
       invoice.paid_amount,
       spacer_rows
     FROM invoice
@@ -443,13 +444,30 @@ function getById(req, res) {
     )
     .all(req.params.id);
 
-  res.json({ ...bill, items });
+  const payments = db
+    .prepare(
+      `
+    SELECT id, invoice_id, amount, mode, transaction_number, payment_date, created_at
+    FROM payments
+    WHERE invoice_id = ?
+    ORDER BY payment_date ASC, id ASC
+  `,
+    )
+    .all(req.params.id);
+
+  res.json({ ...bill, items, payments });
 }
 
 function updateStatus(req, res) {
   try {
     const body = req.body ?? {};
-    const { payment_status, paid_amount, payment_mode, paid_date } = body;
+    const {
+      payment_status,
+      paid_amount,
+      payment_mode,
+      transaction_number,
+      paid_date,
+    } = body;
 
     const bill = db
       .prepare("SELECT id, total, status FROM invoice WHERE id = ?")
@@ -483,17 +501,22 @@ function updateStatus(req, res) {
       if (amountToAdd > 0.0001) {
         db.prepare(
           `
-          INSERT INTO payments (invoice_id, amount, mode, payment_date)
-          VALUES (?, ?, ?, ?)
+          INSERT INTO payments (invoice_id, amount, mode, transaction_number, payment_date)
+          VALUES (?, ?, ?, ?, ?)
         `,
         ).run(
           req.params.id,
           amountToAdd,
           payment_mode ?? null,
+          transaction_number ?? null,
           paid_date ?? new Date().toISOString().slice(0, 10),
         );
       }
-    } else if (payment_mode !== undefined || paid_date !== undefined) {
+    } else if (
+      payment_mode !== undefined ||
+      transaction_number !== undefined ||
+      paid_date !== undefined
+    ) {
       const latestPayment = db
         .prepare(
           `
@@ -510,20 +533,38 @@ function updateStatus(req, res) {
         db.prepare(
           `
           UPDATE payments SET
-            mode = COALESCE(?, mode),
-            payment_date = COALESCE(?, payment_date)
+            mode = CASE WHEN ? THEN ? ELSE mode END,
+            transaction_number = CASE WHEN ? THEN ? ELSE transaction_number END,
+            payment_date = CASE WHEN ? THEN ? ELSE payment_date END
           WHERE id = ?
         `,
-        ).run(payment_mode ?? null, paid_date ?? null, latestPayment.id);
+        ).run(
+          payment_mode !== undefined ? 1 : 0,
+          payment_mode ?? null,
+          transaction_number !== undefined ? 1 : 0,
+          transaction_number ?? null,
+          paid_date !== undefined ? 1 : 0,
+          paid_date ?? null,
+          latestPayment.id,
+        );
       } else {
         db.prepare(
           `
           UPDATE invoice SET
-            payment_mode = COALESCE(?, payment_mode),
-            paid_date = COALESCE(?, paid_date)
+            payment_mode = CASE WHEN ? THEN ? ELSE payment_mode END,
+            transaction_number = CASE WHEN ? THEN ? ELSE transaction_number END,
+            paid_date = CASE WHEN ? THEN ? ELSE paid_date END
           WHERE id = ?
         `,
-        ).run(payment_mode ?? null, paid_date ?? null, req.params.id);
+        ).run(
+          payment_mode !== undefined ? 1 : 0,
+          payment_mode ?? null,
+          transaction_number !== undefined ? 1 : 0,
+          transaction_number ?? null,
+          paid_date !== undefined ? 1 : 0,
+          paid_date ?? null,
+          req.params.id,
+        );
       }
     }
 

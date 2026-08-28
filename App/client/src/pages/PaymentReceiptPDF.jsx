@@ -32,6 +32,37 @@ function DetailRow({ label, value, strong = false }) {
   );
 }
 
+function PaymentRow({ payment }) {
+  const paymentInfo = splitPaymentMode(payment.mode);
+  const mode = paymentInfo.mode || payment.mode || "-";
+  const transactionNumber =
+    payment.transaction_number ?? paymentInfo.transactionNumber;
+
+  return (
+    <View style={styles.paymentRow}>
+      <Text style={[styles.paymentCell, styles.paymentDateCell]}>
+        {formatDate(payment.payment_date)}
+      </Text>
+      <Text style={styles.paymentCell}>{mode}</Text>
+      <Text style={styles.paymentCell}>{transactionNumber || "-"}</Text>
+      <Text style={[styles.paymentCell, styles.paymentAmountCell]}>
+        INR {formatAmount(payment.amount)}
+      </Text>
+    </View>
+  );
+}
+
+function splitPaymentMode(value) {
+  const raw = value ?? "";
+  const match = raw.match(/^(UPI)\s+-\s+TXN:\s+(.+)$/i);
+
+  if (!match) {
+    return { mode: raw, transactionNumber: "" };
+  }
+
+  return { mode: match[1].toUpperCase(), transactionNumber: match[2].trim() };
+}
+
 export default function PaymentReceiptPDF({ data }) {
   if (!data) return null;
 
@@ -40,6 +71,34 @@ export default function PaymentReceiptPDF({ data }) {
   const balance = Math.max(total - paidAmount, 0);
   const logoSrc = getImageSrc(data.logo);
   const receiptNumber = `RCPT-${data.bill_number ?? data.id ?? ""}`;
+  const payments =
+    Array.isArray(data.payments) && data.payments.length > 0
+      ? data.payments
+      : [
+          {
+            amount: paidAmount,
+            mode: data.payment_mode,
+            transaction_number: data.transaction_number,
+            payment_date: data.paid_date,
+          },
+        ];
+  const paymentCount = payments.length;
+  const paymentInfo = splitPaymentMode(payments[0]?.mode ?? data.payment_mode);
+  const paymentModeText = paymentInfo.mode || data.payment_mode;
+  const transactionNumber =
+    payments[0]?.transaction_number ??
+    data.transaction_number ??
+    paymentInfo.transactionNumber;
+  const singlePaymentText =
+    paymentCount === 1 && paymentModeText?.toLowerCase() === "upi" && transactionNumber
+      ? ` through UPI transaction ${transactionNumber}`
+      : paymentCount === 1 && paymentModeText
+        ? ` through ${paymentModeText}`
+        : "";
+  const acknowledgementSuffix =
+    paymentCount > 1
+      ? ` in ${paymentCount} payments detailed below`
+      : singlePaymentText;
 
   return (
     <Document title={`Payment Receipt ${data.bill_number ?? ""}`}>
@@ -72,7 +131,7 @@ export default function PaymentReceiptPDF({ data }) {
           <Text style={styles.ackTitle}>Payment Acknowledgement</Text>
           <Text style={styles.ackText}>
             Received with thanks from {data.client_name ?? "the client"} an amount
-            of INR {formatAmount(paidAmount)} against invoice {data.bill_number}.
+            of INR {formatAmount(paidAmount)}{acknowledgementSuffix} against invoice {data.bill_number}.
           </Text>
         </View>
 
@@ -94,7 +153,36 @@ export default function PaymentReceiptPDF({ data }) {
             <DetailRow label="Invoice No." value={data.bill_number} />
             <DetailRow label="Invoice Date" value={formatDate(data.bill_date)} />
             <DetailRow label="Payment Date" value={formatDate(data.paid_date)} />
+            {paymentCount === 1 && (
+              <>
+                <DetailRow label="Payment Mode" value={paymentModeText} />
+                <DetailRow
+                  label="Transaction No."
+                  value={transactionNumber}
+                />
+              </>
+            )}
           </View>
+        </View>
+
+        <View style={styles.paymentTable}>
+          <Text style={styles.paymentTableTitle}>Payment Breakdown</Text>
+          <View style={styles.paymentHeaderRow}>
+            <Text style={[styles.paymentHeaderCell, styles.paymentDateCell]}>
+              Date
+            </Text>
+            <Text style={styles.paymentHeaderCell}>Mode</Text>
+            <Text style={styles.paymentHeaderCell}>Transaction No.</Text>
+            <Text style={[styles.paymentHeaderCell, styles.paymentAmountCell]}>
+              Amount
+            </Text>
+          </View>
+          {payments.map((payment, index) => (
+            <PaymentRow
+              key={payment.id ?? `${payment.payment_date}-${index}`}
+              payment={payment}
+            />
+          ))}
         </View>
 
         <View style={styles.amountTable}>
@@ -273,6 +361,59 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#cbd5e1",
     borderRadius: 8,
+  },
+  paymentTable: {
+    marginTop: 18,
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  paymentTableTitle: {
+    paddingTop: 10,
+    paddingRight: 10,
+    paddingBottom: 8,
+    paddingLeft: 10,
+    color: "#64748b",
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  paymentHeaderRow: {
+    flexDirection: "row",
+    backgroundColor: "#f8fafc",
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+  },
+  paymentRow: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+  },
+  paymentHeaderCell: {
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    color: "#64748b",
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+  },
+  paymentCell: {
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    color: "#334155",
+    fontSize: 9,
+  },
+  paymentDateCell: {
+    flexGrow: 0.9,
+  },
+  paymentAmountCell: {
+    textAlign: "right",
   },
   statusBox: {
     marginTop: 14,

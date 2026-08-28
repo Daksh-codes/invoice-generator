@@ -1,4 +1,4 @@
-const CURRENT_MIGRATION_VERSION = 8;
+const CURRENT_MIGRATION_VERSION = 9;
 
 function createCurrentSchema(db, { markMigrations = false } = {}) {
   db.exec(`
@@ -67,6 +67,7 @@ function createCurrentSchema(db, { markMigrations = false } = {}) {
       template TEXT DEFAULT 'with_logo',
       spacer_rows INTEGER DEFAULT 3,
       payment_mode TEXT,
+      transaction_number TEXT,
       paid_date TEXT,
       payment_status TEXT CHECK(payment_status IN ('unpaid', 'partial', 'paid')) DEFAULT 'unpaid',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -108,6 +109,7 @@ function createCurrentSchema(db, { markMigrations = false } = {}) {
       invoice_id INTEGER NOT NULL,
       amount REAL NOT NULL CHECK(amount > 0),
       mode TEXT,
+      transaction_number TEXT,
       payment_date TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (invoice_id) REFERENCES invoice(id) ON DELETE CASCADE

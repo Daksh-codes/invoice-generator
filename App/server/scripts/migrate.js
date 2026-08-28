@@ -154,6 +154,54 @@ const migrations = [
       }
     },
   },
+  {
+    version: 9,
+    description: "Add transaction number to invoice and payments",
+    up: (db) => {
+      const invoiceColumns = db.prepare("PRAGMA table_info(invoice)").all();
+      const paymentColumns = db.prepare("PRAGMA table_info(payments)").all();
+
+      if (!invoiceColumns.some((c) => c.name === "transaction_number")) {
+        db.exec(`ALTER TABLE invoice ADD COLUMN transaction_number TEXT`);
+      }
+
+      if (!paymentColumns.some((c) => c.name === "transaction_number")) {
+        db.exec(`ALTER TABLE payments ADD COLUMN transaction_number TEXT`);
+      }
+
+      const encodedPayments = db.prepare(`
+        SELECT id, mode
+        FROM payments
+        WHERE mode LIKE 'UPI - TXN:%'
+      `).all();
+      const updatePayment = db.prepare(`
+        UPDATE payments
+        SET mode = 'UPI', transaction_number = ?
+        WHERE id = ?
+      `);
+
+      for (const payment of encodedPayments) {
+        const transactionNumber = payment.mode.replace(/^UPI\s+-\s+TXN:\s*/i, "").trim();
+        updatePayment.run(transactionNumber || null, payment.id);
+      }
+
+      const encodedInvoices = db.prepare(`
+        SELECT id, payment_mode
+        FROM invoice
+        WHERE payment_mode LIKE 'UPI - TXN:%'
+      `).all();
+      const updateInvoice = db.prepare(`
+        UPDATE invoice
+        SET payment_mode = 'UPI', transaction_number = ?
+        WHERE id = ?
+      `);
+
+      for (const invoice of encodedInvoices) {
+        const transactionNumber = invoice.payment_mode.replace(/^UPI\s+-\s+TXN:\s*/i, "").trim();
+        updateInvoice.run(transactionNumber || null, invoice.id);
+      }
+    },
+  },
 ];
 
 function runMigrations(db) {

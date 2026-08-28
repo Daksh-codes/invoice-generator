@@ -42,7 +42,7 @@ export default function InvoiceTemplate({ data, variant = "full" }) {
     upi_qr,
   } = data;
 
-  const isQuotation  = doc_type === "QUOTATION";
+  const isMiscellaneous  = doc_type === "QUOTATION";
   const showDiscount = Number(discount) > 0;
   const showGst      = Boolean(is_gst_enabled);
   const showLogo     = (variant === "full" || variant === "logo-only") && logo;
@@ -104,7 +104,7 @@ export default function InvoiceTemplate({ data, variant = "full" }) {
               )}
             </div>
             <div className="font-medium text-right">
-              <p>{isQuotation ? "Quotation No." : "Bill No :"} {bill_number}</p>
+              <p>{isMiscellaneous ? "Miscellaneous No." : "Bill No :"} {bill_number}</p>
               <p>Date : {bill_date}</p>
               {due_date && <p>Due : {due_date}</p>}
               {payment_terms && <p>Terms : {payment_terms}</p>}

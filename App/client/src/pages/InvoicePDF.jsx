@@ -48,7 +48,7 @@ function getImageSrc(path) {
 }
 
 function getDocumentLabel(docType) {
-  return docType === "QUOTATION" ? "Quotation" : "Invoice";
+  return docType === "QUOTATION" ? "Miscellaneous" : "Invoice";
 }
 
 function Header({ data, template }) {
@@ -126,7 +126,7 @@ function BillMeta({ data }) {
 
       <View style={styles.billNumbers}>
         <Text style={styles.sectionLabel}>
-          {doc_type === "QUOTATION" ? "Quotation No." : "Invoice No."}
+          {doc_type === "QUOTATION" ? "Miscellaneous No." : "Invoice No."}
         </Text>
         <Text style={styles.billNumber}>{bill_number}</Text>
         <Text style={styles.bodyText}>{formatDate(bill_date)}</Text>

@@ -19,7 +19,7 @@ function recalculateInvoicePayment(invoiceId) {
   const latest = db
     .prepare(
       `
-      SELECT mode, payment_date
+      SELECT mode, transaction_number, payment_date
       FROM payments
       WHERE invoice_id = ?
       ORDER BY payment_date DESC, id DESC
@@ -36,6 +36,7 @@ function recalculateInvoicePayment(invoiceId) {
       SET paid_amount = ?,
           payment_status = ?,
           payment_mode = ?,
+          transaction_number = ?,
           paid_date = ?
       WHERE id = ?
     `,
@@ -43,6 +44,7 @@ function recalculateInvoicePayment(invoiceId) {
     paid,
     paymentStatus,
     latest?.mode ?? null,
+    latest?.transaction_number ?? null,
     latest?.payment_date ?? null,
     invoiceId,
   );
@@ -50,7 +52,7 @@ function recalculateInvoicePayment(invoiceId) {
   return db
     .prepare(
       `
-      SELECT id, paid_amount, payment_status, payment_mode, paid_date, total
+      SELECT id, paid_amount, payment_status, payment_mode, transaction_number, paid_date, total
       FROM invoice
       WHERE id = ?
     `,
@@ -62,7 +64,7 @@ function listPayments(invoiceId) {
   return db
     .prepare(
       `
-      SELECT id, invoice_id, amount, mode, payment_date, created_at
+      SELECT id, invoice_id, amount, mode, transaction_number, payment_date, created_at
       FROM payments
       WHERE invoice_id = ?
       ORDER BY payment_date ASC, id ASC
@@ -88,6 +90,7 @@ function addPayment(req, res) {
     const invoiceId = Number(req.body.invoice_id);
     const amount = Number(req.body.amount);
     const mode = req.body.mode?.trim() || null;
+    const transactionNumber = req.body.transaction_number?.trim() || null;
     const paymentDate = req.body.payment_date?.trim();
 
     if (!invoiceId) return res.status(400).json({ message: "invoice_id is required" });
@@ -115,15 +118,22 @@ function addPayment(req, res) {
     const result = db
       .prepare(
         `
-        INSERT INTO payments (invoice_id, amount, mode, payment_date)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO payments (invoice_id, amount, mode, transaction_number, payment_date)
+        VALUES (?, ?, ?, ?, ?)
       `,
       )
-      .run(invoiceId, amount, mode, paymentDate);
+      .run(invoiceId, amount, mode, transactionNumber, paymentDate);
 
     const updatedInvoice = recalculateInvoicePayment(invoiceId);
     res.json({
-      payment: { id: result.lastInsertRowid, invoice_id: invoiceId, amount, mode, payment_date: paymentDate },
+      payment: {
+        id: result.lastInsertRowid,
+        invoice_id: invoiceId,
+        amount,
+        mode,
+        transaction_number: transactionNumber,
+        payment_date: paymentDate,
+      },
       payments: listPayments(invoiceId),
       invoice: updatedInvoice,
     });

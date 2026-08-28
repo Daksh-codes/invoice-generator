@@ -323,7 +323,7 @@ function BillMeta({ data }) {
       </div>
       <div className="text-right">
         <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">
-          {doc_type === "QUOTATION" ? "Quotation No." : "Invoice No."}
+          {doc_type === "QUOTATION" ? "Miscellaneous No." : "Invoice No."}
         </p>
         <p className="font-bold text-slate-800">{bill_number}</p>
         <p className="text-sm text-slate-500 mt-0.5">{formatDate(bill_date)}</p>
@@ -393,7 +393,7 @@ function WithLogoTemplate({ data }) {
           </div>
           <div className="text-right shrink-0">
             <p className="text-2xl font-bold tracking-widest text-slate-700 uppercase">
-              {doc_type === "QUOTATION" ? "Quotation" : "Invoice"}
+              {doc_type === "QUOTATION" ? "Miscellaneous" : "Invoice"}
             </p>
           </div>
         </div>
@@ -455,7 +455,7 @@ function WithoutLogoTemplate({ data }) {
           </div>
           <div className="text-right shrink-0">
             <p className="text-2xl font-bold tracking-widest text-slate-700 uppercase">
-              {doc_type === "QUOTATION" ? "Quotation" : "Invoice"}
+              {doc_type === "QUOTATION" ? "Miscellaneous" : "Invoice"}
             </p>
           </div>
         </div>
@@ -488,7 +488,7 @@ function PlainTemplate({ data }) {
         {/* Header — just the doc type */}
         <div className="text-center pb-4 border-b-2 border-slate-800">
           <h1 className="text-3xl font-bold tracking-widest text-slate-800 uppercase">
-            {doc_type === "QUOTATION" ? "Quotation" : "Invoice"}
+            {doc_type === "QUOTATION" ? "Miscellaneous" : "Invoice"}
           </h1>
         </div>
 

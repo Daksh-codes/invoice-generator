@@ -67,6 +67,37 @@ const STATUS_STYLES = {
 };
 
 // ── Shared: Mode dropdown with inline add ─────────────────────────────────
+function isUpiMode(mode) {
+  return (mode ?? "").trim().toLowerCase() === "upi";
+}
+
+function splitPaymentMode(value) {
+  const raw = value ?? "";
+  const match = raw.match(/^(UPI)\s+-\s+TXN:\s+(.+)$/i);
+
+  if (!match) {
+    return { mode: raw, transactionNumber: "" };
+  }
+
+  return { mode: match[1].toUpperCase(), transactionNumber: match[2].trim() };
+}
+
+function getPaymentModeName(value) {
+  return splitPaymentMode(value).mode;
+}
+
+function getTransactionNumber(bill) {
+  return (
+    bill.transaction_number ??
+    splitPaymentMode(bill.payment_mode).transactionNumber ??
+    ""
+  );
+}
+
+function getInitialPaymentMode(bill, modes) {
+  return getPaymentModeName(bill.payment_mode) || modes[0] || "";
+}
+
 function ModeDropdown({ current, modes, onSelect, onAddMode }) {
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -261,7 +292,10 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
   const [payments, setPayments] = useState([]);
   const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState(
-    bill.payment_mode ?? modes[0] ?? "",
+    getInitialPaymentMode(bill, modes),
+  );
+  const [transactionNumber, setTransactionNumber] = useState(
+    getTransactionNumber(bill),
   );
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().slice(0, 10),
@@ -275,6 +309,7 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
   const newAmount = parseFloat(amount) || 0;
   const balance = Math.max(total - paidSoFar, 0);
   const balanceAfter = Math.max(balance - newAmount, 0);
+  const requiresTransactionNumber = isUpiMode(paymentMode);
 
   useEffect(() => {
     let alive = true;
@@ -307,11 +342,15 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
         invoice_id: bill.id,
         amount: newAmount,
         mode: paymentMode,
+        transaction_number: requiresTransactionNumber
+          ? transactionNumber.trim()
+          : null,
         payment_date: paymentDate,
       });
       setPayments(res.data.payments ?? []);
       if (res.data.invoice) onChanged(bill.id, res.data.invoice);
       setAmount("");
+      setTransactionNumber("");
     } catch (err) {
       setError(err.response?.data?.message ?? "Failed to add payment.");
     } finally {
@@ -391,12 +430,15 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
               {payments.map((payment) => (
                 <div
                   key={payment.id}
-                  className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center px-3 py-2 text-sm"
+                  className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 items-center px-3 py-2 text-sm"
                 >
                   <span className="text-slate-500">
                     {formatDate(payment.payment_date)}
                   </span>
                   <span className="text-slate-600">{payment.mode ?? "-"}</span>
+                  <span className="text-slate-500">
+                    {payment.transaction_number ?? "-"}
+                  </span>
                   <span className="font-medium text-slate-800 text-right">
                     {formatAmount(payment.amount)}
                   </span>
@@ -438,7 +480,10 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
             <div className="flex gap-2">
               <select
                 value={paymentMode}
-                onChange={(e) => setPaymentMode(e.target.value)}
+                onChange={(e) => {
+                  setPaymentMode(e.target.value);
+                  if (!isUpiMode(e.target.value)) setTransactionNumber("");
+                }}
                 className="min-w-0 flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white"
               >
                 {modes.map((m) => (
@@ -472,6 +517,20 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
               className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>
+          {requiresTransactionNumber && (
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                Transaction No.
+              </label>
+              <input
+                type="text"
+                value={transactionNumber}
+                onChange={(e) => setTransactionNumber(e.target.value)}
+                placeholder="UPI transaction no."
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              />
+            </div>
+          )}
           <button
             type="button"
             onClick={handleAddPayment}
@@ -480,7 +539,9 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
               loading ||
               !newAmount ||
               newAmount <= 0 ||
-              newAmount > balance
+              newAmount > balance ||
+              !paymentMode ||
+              (requiresTransactionNumber && !transactionNumber.trim())
             }
             className="px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap"
           >
@@ -505,11 +566,15 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
 // Paid Modal ─────────────────────────────────────────────────────────────
 function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
   const [paymentMode, setPaymentMode] = useState(
-    bill.payment_mode ?? modes[0] ?? "",
+    getInitialPaymentMode(bill, modes),
+  );
+  const [transactionNumber, setTransactionNumber] = useState(
+    getTransactionNumber(bill),
   );
   const [paidDate, setPaidDate] = useState(
     bill.paid_date ?? new Date().toISOString().slice(0, 10),
   );
+  const requiresTransactionNumber = isUpiMode(paymentMode);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -532,7 +597,10 @@ function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
             <div className="flex gap-2">
               <select
                 value={paymentMode}
-                onChange={(e) => setPaymentMode(e.target.value)}
+                onChange={(e) => {
+                  setPaymentMode(e.target.value);
+                  if (!isUpiMode(e.target.value)) setTransactionNumber("");
+                }}
                 className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white"
               >
                 {modes.map((m) => (
@@ -567,6 +635,21 @@ function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
               className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>
+
+          {requiresTransactionNumber && (
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                Transaction No.
+              </label>
+              <input
+                type="text"
+                value={transactionNumber}
+                onChange={(e) => setTransactionNumber(e.target.value)}
+                placeholder="UPI transaction no."
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300"
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
@@ -582,8 +665,15 @@ function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
                 payment_status: "paid",
                 paid_amount: Number(bill.total),
                 payment_mode: paymentMode,
+                transaction_number: requiresTransactionNumber
+                  ? transactionNumber.trim()
+                  : null,
                 paid_date: paidDate,
               })
+            }
+            disabled={
+              !paymentMode ||
+              (requiresTransactionNumber && !transactionNumber.trim())
             }
             className="px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
           >
@@ -698,7 +788,7 @@ function PaymentModeCell({ bill, modes, onAddMode, onUpdated }) {
   }
 
   function handleSelect(mode) {
-    if (mode === bill.payment_mode) return;
+    if (mode === getPaymentModeName(bill.payment_mode)) return;
     setPendingMode(mode);
     setConfirmOpen(true);
   }
@@ -707,7 +797,12 @@ function PaymentModeCell({ bill, modes, onAddMode, onUpdated }) {
     if (!pendingMode) return;
     setSaving(true);
     try {
-      const res = await updatePaymentStatus(bill.id, { payment_mode: pendingMode });
+      const res = await updatePaymentStatus(bill.id, {
+        payment_mode: pendingMode,
+        transaction_number: isUpiMode(pendingMode)
+          ? getTransactionNumber(bill) || null
+          : null,
+      });
       onUpdated(bill.id, res.data.invoice ?? { payment_mode: pendingMode });
     } catch (err) {
       console.error(err);
@@ -726,7 +821,7 @@ function PaymentModeCell({ bill, modes, onAddMode, onUpdated }) {
   return (
     <>
       <ModeDropdown
-        current={bill.payment_mode}
+        current={getPaymentModeName(bill.payment_mode)}
         modes={modes}
         onSelect={handleSelect}
         onAddMode={onAddMode}
@@ -847,7 +942,8 @@ export default function BillsDashboard() {
       if (filterFirm && b.issuer_id !== Number(filterFirm)) return false;
       if (filterStatus && b.payment_status?.toLowerCase() !== filterStatus)
         return false;
-      if (filterMode && (b.payment_mode ?? "") !== filterMode) return false;
+      if (filterMode && getPaymentModeName(b.payment_mode) !== filterMode)
+        return false;
       if (filterDateFrom || filterDateTo) {
         const d = b.bill_date?.slice(0, 10);
         if (!d) return false;
@@ -915,7 +1011,8 @@ export default function BillsDashboard() {
           "Balance (₹)":
             Number(bill.total ?? 0) - Number(bill.paid_amount ?? 0),
           Status: bill.payment_status === "partial" ? "Advance" : bill.payment_status ?? "",
-          "Payment Mode": bill.payment_mode ?? "",
+          "Payment Mode": getPaymentModeName(bill.payment_mode) ?? "",
+          "Transaction No.": getTransactionNumber(bill),
           Template: bill.template ?? "",
           "Bill Status": bill.status ?? "",
         }));
@@ -930,6 +1027,7 @@ export default function BillsDashboard() {
           { wch: 12 },
           { wch: 12 },
           { wch: 14 },
+          { wch: 18 },
           { wch: 12 },
           { wch: 14 },
           { wch: 10 },
@@ -998,7 +1096,7 @@ export default function BillsDashboard() {
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                {type === "INVOICE" ? "Invoices" : "Quotations"}
+                {type === "INVOICE" ? "Invoices" : "Miscellaneous"}
               </button>
             ))}
           </div>

@@ -1,6 +1,6 @@
 // src/pages/PrefixHistoryPage.jsx
 // Route: /firms/:id/prefix-history
-// Shows invoice and quotation prefix history, allows changing prefix
+// Shows invoice and miscellaneous prefix history, allows changing prefix
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -96,7 +96,7 @@ export default function PrefixHistoryPage() {
           <div className="grid grid-cols-2 gap-4">
             {[
               { type: "INVOICE", label: "Invoice Prefix", current: firm?.invoice_prefix, counter: firm?.invoice_counter },
-              { type: "QUOTATION", label: "Quotation Prefix", current: firm?.quotation_prefix, counter: firm?.quotation_counter },
+              { type: "QUOTATION", label: "Miscellaneous Prefix", current: firm?.quotation_prefix, counter: firm?.quotation_counter },
             ].map(({ type, label, current, counter }) => (
               <div key={type} className="border border-slate-200 rounded-lg p-4">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
@@ -117,7 +117,7 @@ export default function PrefixHistoryPage() {
         {changing && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 space-y-3">
             <div>
-              <h2 className="text-sm font-bold text-slate-800">Change {changing === "INVOICE" ? "Invoice" : "Quotation"} Prefix</h2>
+              <h2 className="text-sm font-bold text-slate-800">Change {changing === "INVOICE" ? "Invoice" : "Miscellaneous"} Prefix</h2>
               <p className="text-xs text-amber-700 mt-1">Counter will reset to 1. Old bills keep their numbers.</p>
             </div>
             <div className="flex gap-2">
@@ -145,8 +145,8 @@ export default function PrefixHistoryPage() {
         {/* Invoice history */}
         <PrefixTable title="Invoice Prefix History" rows={invoiceHistory} />
 
-        {/* Quotation history */}
-        <PrefixTable title="Quotation Prefix History" rows={quotationHistory} />
+        {/* Miscellaneous history */}
+        <PrefixTable title="Miscellaneous Prefix History" rows={quotationHistory} />
 
       </div>
     </div>

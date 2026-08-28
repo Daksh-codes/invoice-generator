@@ -478,7 +478,7 @@ export default function BillEditForm() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-slate-800">
-              Edit {docType === "INVOICE" ? "Invoice" : "Quotation"}
+              Edit {docType === "INVOICE" ? "Invoice" : "Miscellaneous"}
             </h1>
             <p className="text-sm text-slate-400 font-mono mt-0.5">
               {billNumber} · {firmName}
@@ -512,7 +512,7 @@ export default function BillEditForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Bill number — read only */}
             <Field
-              label={docType === "INVOICE" ? "Invoice No." : "Quotation No."}
+              label={docType === "INVOICE" ? "Invoice No." : "Miscellaneous No."}
             >
               <input
                 value={billNumber}

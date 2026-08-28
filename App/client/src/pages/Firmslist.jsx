@@ -123,7 +123,7 @@ export default function FirmsList() {
                     <td className="px-4 py-3 text-slate-500 font-mono text-xs">
                       <div className="flex flex-col gap-0.5">
                         <span>INV: {firm.invoice_prefix}</span>
-                        <span>QT: {firm.quotation_prefix}</span>
+                        <span>MIS: {firm.quotation_prefix}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
