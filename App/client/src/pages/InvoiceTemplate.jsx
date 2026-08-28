@@ -77,7 +77,18 @@ function ItemsTable({ data, plain = false }) {
         {items.map((item, i) => (
           <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
             <td className="border border-slate-200 p-2 text-sm text-slate-700">
-              {item.description}
+              {item.imagePath ? (
+                <div className="flex items-center gap-2">
+                  <img
+                    src={imageUrl(item.imagePath)}
+                    alt=""
+                    className="w-10 h-10 object-contain shrink-0"
+                  />
+                  <span>{item.description}</span>
+                </div>
+              ) : (
+                item.description
+              )}
             </td>
             <td className="border border-slate-200 p-2 text-right text-sm text-slate-700">
               {formatAmount(item.amount)}

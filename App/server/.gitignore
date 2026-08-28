@@ -11,6 +11,11 @@ data/
 
 # Uploads
 uploads/
+!uploads/
+uploads/*
+!uploads/line-item-images/
+uploads/line-item-images/*
+!uploads/line-item-images/.gitkeep
 
 # Logs
 *.log

@@ -22,6 +22,7 @@ import {
   createQuotation,
   getDescriptions,
 } from "../api";
+import LineItemImageInput from "../component/LineItemImageInput";
 
 // ── Number to words (Indian system) ───────────────────────────────────────
 const ones = [
@@ -283,7 +284,7 @@ function SectionHeader({ title }) {
 }
 
 // ── Main Form ──────────────────────────────────────────────────────────────
-const EMPTY_ITEM = { description: "", amount: "" };
+const EMPTY_ITEM = { description: "", amount: "", imagePath: null };
 
 export default function BillForm() {
   const navigate = useNavigate();
@@ -490,6 +491,7 @@ export default function BillForm() {
         quantity: 1,
         rate: parseFloat(item.amount) || 0,
         amount: parseFloat(item.amount) || 0,
+        imagePath: item.imagePath || null,
       })),
     };
 
@@ -720,6 +722,11 @@ export default function BillForm() {
                       {errors[`item_${i}_description`]}
                     </p>
                   )}
+                  <LineItemImageInput
+                    imagePath={item.imagePath}
+                    onChange={(path) => updateItem(i, "imagePath", path)}
+                    disabled={loading}
+                  />
                 </div>
                 <div>
                   <Input

@@ -25,6 +25,8 @@ export const updatePaymentStatus = (id, payload) =>
   api.put(`/api/bills/${id}/status`, payload);
 export const getDescriptions = () => api.get("/api/bills/descriptions");
 export const updateBill = (id, data) => api.put(`/api/bills/${id}`, data);
+export const uploadLineItemImage = (formData) =>
+  api.post("/api/bills/line-item-image", formData);
 
 // ── Issuers ────────────────────────────────────────────────────────────────
 export const getAllIssuers = () => api.get("/api/issuers");

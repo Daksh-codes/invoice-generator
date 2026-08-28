@@ -3,22 +3,30 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-const UPLOAD_DIR = path.join(__dirname, "../images");
+const IMAGE_UPLOAD_DIR = path.join(__dirname, "../images");
+const LINE_ITEM_IMAGE_UPLOAD_DIR = path.join(
+  __dirname,
+  "../uploads/line-item-images",
+);
 
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+for (const dir of [IMAGE_UPLOAD_DIR, LINE_ITEM_IMAGE_UPLOAD_DIR]) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (req, file, cb) => {
-    const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${file.fieldname}-${unique}${ext}`);
-  },
-});
+function createStorage(uploadDir) {
+  return multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `${file.fieldname}-${unique}${ext}`);
+    },
+  });
+}
 
 const fileFilter = (req, file, cb) => {
   const allowed = [".png", ".jpg", ".jpeg"];
@@ -31,7 +39,13 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage,
+  storage: createStorage(IMAGE_UPLOAD_DIR),
+  fileFilter,
+  limits: { fileSize: 2 * 1024 * 1024 },
+});
+
+const lineItemImageUpload = multer({
+  storage: createStorage(LINE_ITEM_IMAGE_UPLOAD_DIR),
   fileFilter,
   limits: { fileSize: 2 * 1024 * 1024 },
 });
@@ -49,4 +63,4 @@ function handleUploadError(err, req, res, next) {
   next();
 }
 
-module.exports = { upload, handleUploadError };
+module.exports = { upload, lineItemImageUpload, handleUploadError };

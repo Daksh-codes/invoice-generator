@@ -149,6 +149,25 @@ function TableCell({ children, style, textStyle, header = false }) {
   );
 }
 
+function DescriptionCell({ item, style }) {
+  const imageSrc = getImageSrc(item.imagePath);
+
+  if (!imageSrc) {
+    return <TableCell style={style}>{item.description}</TableCell>;
+  }
+
+  return (
+    <View style={[styles.tableCell, style]}>
+      <View style={styles.itemDescriptionWithImage}>
+        <Image src={imageSrc} style={styles.itemImage} />
+        <Text style={[styles.tableText, styles.itemDescriptionText]}>
+          {item.description}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function AmountRow({ label, value, plain, danger = false, strong = false }) {
   return (
     <View style={[styles.tableRow, strong && styles.totalRow]} wrap={false}>
@@ -202,7 +221,7 @@ function ItemsTable({ data, plain }) {
         {plain ? (
           <>
             <TableCell header style={styles.descriptionCol}>
-              Description
+              Particulars:
             </TableCell>
             <TableCell header style={styles.amountCol}>
               Amount (INR)
@@ -211,7 +230,7 @@ function ItemsTable({ data, plain }) {
         ) : (
           <>
             <TableCell header style={styles.serviceDescriptionCol}>
-              Professional Fees for the services rendered as below:
+              Particulars:
             </TableCell>
             <TableCell header style={styles.serviceAmountCol}>
               Amount (INR)
@@ -228,16 +247,14 @@ function ItemsTable({ data, plain }) {
         >
           {plain ? (
             <>
-              <TableCell style={styles.descriptionCol}>{item.description}</TableCell>
+              <DescriptionCell item={item} style={styles.descriptionCol} />
               <TableCell style={styles.amountCol}>
                 {formatAmount(item.amount)}
               </TableCell>
             </>
           ) : (
             <>
-              <TableCell style={styles.serviceDescriptionCol}>
-                {item.description}
-              </TableCell>
+              <DescriptionCell item={item} style={styles.serviceDescriptionCol} />
               <TableCell style={styles.serviceAmountCol}>
                 {formatAmount(item.amount)}
               </TableCell>
@@ -577,6 +594,20 @@ const styles = StyleSheet.create({
     color: "#334155",
     fontSize: 9,
     lineHeight: 1.35,
+  },
+  itemDescriptionWithImage: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  itemImage: {
+    width: 32,
+    height: 32,
+    objectFit: "contain",
+  },
+  itemDescriptionText: {
+    flexGrow: 1,
+    flexBasis: 0,
   },
   altRow: {
     backgroundColor: "#f8fafc",

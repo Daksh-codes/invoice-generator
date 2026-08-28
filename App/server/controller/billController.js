@@ -16,8 +16,8 @@ const insertBillStmt = db.prepare(`
 const insertItemStmt = db.prepare(`
   INSERT INTO invoice_items (
     invoice_id, description, quantity, rate, amount,
-    hsn_code, tax_rate, tax_amount
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    hsn_code, tax_rate, tax_amount, imagePath
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -33,6 +33,7 @@ function insertItems(invoice_id, items = []) {
       item.hsn_code || null,
       item.tax_rate || 0,
       item.tax_amount || 0,
+      item.imagePath?.trim() || null,
     );
   }
 }
@@ -438,7 +439,7 @@ function getById(req, res) {
   const items = db
     .prepare(
       `
-    SELECT description, quantity, rate, amount, hsn_code, tax_rate, tax_amount
+    SELECT description, quantity, rate, amount, hsn_code, tax_rate, tax_amount, imagePath
     FROM invoice_items WHERE invoice_id = ?
   `,
     )
@@ -629,6 +630,19 @@ function getDescriptions(req, res) {
   res.json(rows.map((r) => r.description));
 }
 
+function uploadLineItemImage(req, res) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const imagePath = `/api/bills/line-item-images/${req.file.filename}`;
+    res.json({ success: true, imagePath });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
 function unvoidBill(req, res) {
   db.prepare(`UPDATE invoice SET status = 'active' WHERE id = ? AND status = 'void'`)
     .run(req.params.id);
@@ -688,6 +702,7 @@ module.exports = {
   getByStatus,
   convertToInvoice,
   getDescriptions,
+  uploadLineItemImage,
   unvoidBill,
   updateBill
 };

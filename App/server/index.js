@@ -41,6 +41,7 @@ app.use(express.json());
 app.use(cors({}));
 
 app.use("/images", express.static(path.join(__dirname, "images")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/api/issuers", issuerRoute);
 app.use("/api/clients", clientRoute);
@@ -55,21 +56,35 @@ app.get("/api/version", (req, res) => {
   res.json(versionData);
 });
 
-async function getLatestRelease() {
-  const response = await fetch(
-    "https://api.github.com/repos/Daksh-codes/invoice-generator/releases/latest",
-  );
-  if (!response.ok) {
-    throw new Error("Failed to fetch latest release");
-  }
-  const data = await response.json();
-  return {
-    version: data.tag_name,
-    downloadUrl: data.assets[0]?.browser_download_url,
-    releaseNotes: data.body,
-  };
-}
+let updateCache = { data: null, fetchedAt: 0 };
+const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 
+async function getLatestRelease() {
+  const now = Date.now();
+  if (updateCache.data && (now - updateCache.fetchedAt) < CACHE_DURATION_MS) {
+    return updateCache.data;
+  }
+
+  try {
+    const response = await fetch('https://api.github.com/repos/Daksh-codes/invoice-generator/releases/latest');
+    if (!response.ok) {
+      throw new Error(`GitHub API returned ${response.status}: ${response.statusText}`);
+    }
+    const data = await response.json();
+    const appAsset = data.assets?.find(a => a.name.startsWith('InvoiceDesk-Update-'));
+    const result = {
+      version: data.tag_name,
+      downloadUrl: appAsset?.browser_download_url,
+      releaseNotes: data.body,
+    };
+
+    updateCache = { data: result, fetchedAt: now };
+    return result;
+  } catch (err) {
+    console.error('getLatestRelease actual error:', err.message, err.stack);
+    throw err;
+  }
+}
 app.get("/api/check-update", localOnly, async (req, res) => {
   try {
     const localVersion = JSON.parse(
@@ -117,7 +132,7 @@ app.post('/api/apply-update', localOnly, async (req, res) => {
   try {
     const latest = await getLatestRelease();
     const appAsset = latest.assets?.find(a => a.name.startsWith('InvoiceDesk-Update-'));
-
+    console.log(appAsset)
     if (!appAsset) {
       return res.status(500).json({ error: 'Update package not found in latest release.' });
     }
@@ -220,7 +235,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
 
-app.get(/^\/(?!api\/|images\/).*/, (req, res) => {
+app.get(/^\/(?!api\/|images\/|uploads\/).*/, (req, res) => {
   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
 

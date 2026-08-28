@@ -1,5 +1,7 @@
 const express = require("express");
+const path = require("path");
 const router = express.Router();
+const { lineItemImageUpload, handleUploadError } = require("../middleware/multer");
 const {
   createBill,
   finalizeDraft,
@@ -11,6 +13,7 @@ const {
   getByStatus,
   convertToInvoice,
   getDescriptions,
+  uploadLineItemImage,
   unvoidBill,
   updateBill
 } = require("../controller/billController");
@@ -21,6 +24,16 @@ router.get("/status/:status", getByStatus);             // ?doc_type=INVOICE|QUO
 
 // to get unique descriptions from all table
 router.get("/descriptions", getDescriptions);
+router.use(
+  "/line-item-images",
+  express.static(path.join(__dirname, "../uploads/line-item-images")),
+);
+router.post(
+  "/line-item-image",
+  (req, res, next) => lineItemImageUpload.single("line_item_image")(req, res, next),
+  handleUploadError,
+  uploadLineItemImage,
+);
 
 // List & create
 router.get("/", getAll);                                // ?doc_type=  &include_drafts=  &include_void=

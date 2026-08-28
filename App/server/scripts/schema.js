@@ -1,4 +1,4 @@
-const CURRENT_MIGRATION_VERSION = 9;
+const CURRENT_MIGRATION_VERSION = 10;
 
 function createCurrentSchema(db, { markMigrations = false } = {}) {
   db.exec(`
@@ -85,6 +85,7 @@ function createCurrentSchema(db, { markMigrations = false } = {}) {
       hsn_code TEXT,
       tax_rate REAL DEFAULT 0,
       tax_amount REAL DEFAULT 0,
+      imagePath TEXT,
       FOREIGN KEY (invoice_id) REFERENCES invoice(id)
     );
 

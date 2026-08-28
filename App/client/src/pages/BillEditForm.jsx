@@ -12,6 +12,7 @@ import {
   getDescriptions,
   updateBill,
 } from "../api";
+import LineItemImageInput from "../component/LineItemImageInput";
 
 // ── Number to words (Indian system) ───────────────────────────────────────
 const ones = [
@@ -259,7 +260,7 @@ function SectionHeader({ title }) {
   );
 }
 
-const EMPTY_ITEM = { description: "", amount: "" };
+const EMPTY_ITEM = { description: "", amount: "", imagePath: null };
 
 export default function BillEditForm() {
   const { id } = useParams();
@@ -326,6 +327,7 @@ export default function BillEditForm() {
             bill.items.map((it) => ({
               description: it.description,
               amount: String(it.amount),
+              imagePath: it.imagePath ?? null,
             })),
           );
         }
@@ -451,6 +453,7 @@ export default function BillEditForm() {
         quantity: 1,
         rate: parseFloat(item.amount) || 0,
         amount: parseFloat(item.amount) || 0,
+        imagePath: item.imagePath || null,
       })),
     };
 
@@ -612,6 +615,11 @@ export default function BillEditForm() {
                       {errors[`item_${i}_description`]}
                     </p>
                   )}
+                  <LineItemImageInput
+                    imagePath={item.imagePath}
+                    onChange={(path) => updateItem(i, "imagePath", path)}
+                    disabled={loading}
+                  />
                 </div>
                 <div>
                   <Input

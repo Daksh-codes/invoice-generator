@@ -202,6 +202,17 @@ const migrations = [
       }
     },
   },
+  {
+    version: 10,
+    description: "Add optional image path to invoice line items",
+    up: (db) => {
+      const itemColumns = db.prepare("PRAGMA table_info(invoice_items)").all();
+
+      if (!itemColumns.some((c) => c.name === "imagePath")) {
+        db.exec(`ALTER TABLE invoice_items ADD COLUMN imagePath TEXT`);
+      }
+    },
+  },
 ];
 
 function runMigrations(db) {
