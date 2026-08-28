@@ -118,7 +118,9 @@ function BillMeta({ data }) {
       <View style={styles.billTo}>
         <Text style={styles.sectionLabel}>Billed To</Text>
         <Text style={styles.clientName}>{client_name}</Text>
-        {client_address && <Text style={styles.bodyText}>{client_address}</Text>}
+        {client_address && (
+          <Text style={styles.bodyText}>{client_address}</Text>
+        )}
         {client_gstin && is_gst_enabled === 1 && (
           <Text style={styles.bodyText}>GSTIN: {client_gstin}</Text>
         )}
@@ -133,7 +135,9 @@ function BillMeta({ data }) {
         {payment_terms && (
           <Text style={styles.smallText}>Terms: {payment_terms}</Text>
         )}
-        {due_date && <Text style={styles.smallText}>Due: {formatDate(due_date)}</Text>}
+        {due_date && (
+          <Text style={styles.smallText}>Due: {formatDate(due_date)}</Text>
+        )}
       </View>
     </View>
   );
@@ -142,7 +146,9 @@ function BillMeta({ data }) {
 function TableCell({ children, style, textStyle, header = false }) {
   return (
     <View style={[styles.tableCell, style]}>
-      <Text style={[header ? styles.tableHeaderText : styles.tableText, textStyle]}>
+      <Text
+        style={[header ? styles.tableHeaderText : styles.tableText, textStyle]}
+      >
         {children}
       </Text>
     </View>
@@ -213,7 +219,9 @@ function ItemsTable({ data, plain }) {
   const advanceAmount = Number(paid_amount ?? 0);
   const showDiscount = Number(discount) > 0;
   const showTax = is_gst_enabled === 1 && Number(tax_total) > 0;
-  const showAdvance = payment_status === "partial" && advanceAmount > 0;  const displayTotal = showAdvance ? Math.max(total - advanceAmount, 0) : total;  const showSubtotal = showDiscount || showTax;
+  const showAdvance = payment_status === "partial" && advanceAmount > 0;
+  const displayTotal = showAdvance ? Math.max(total - advanceAmount, 0) : total;
+  const showSubtotal = showDiscount || showTax;
 
   return (
     <View style={styles.table}>
@@ -254,7 +262,10 @@ function ItemsTable({ data, plain }) {
             </>
           ) : (
             <>
-              <DescriptionCell item={item} style={styles.serviceDescriptionCol} />
+              <DescriptionCell
+                item={item}
+                style={styles.serviceDescriptionCol}
+              />
               <TableCell style={styles.serviceAmountCol}>
                 {formatAmount(item.amount)}
               </TableCell>
@@ -280,7 +291,11 @@ function ItemsTable({ data, plain }) {
       ))}
 
       {showSubtotal && (
-        <AmountRow label="Subtotal" value={formatAmount(subtotal)} plain={plain} />
+        <AmountRow
+          label="Subtotal"
+          value={formatAmount(subtotal)}
+          plain={plain}
+        />
       )}
       {showDiscount && (
         <AmountRow
@@ -306,7 +321,12 @@ function ItemsTable({ data, plain }) {
           <AmountRow label="SGST" value={formatAmount(sgst)} plain={plain} />
         </>
       )}
-      <AmountRow label="Total" value={formatAmount(displayTotal)} plain={plain} strong />
+      <AmountRow
+        label="Total"
+        value={formatAmount(displayTotal)}
+        plain={plain}
+        strong
+      />
 
       {total_in_words && (
         <View style={styles.wordsRow} wrap={false}>
@@ -331,28 +351,40 @@ function PaymentSummary({ data }) {
   return (
     <View style={styles.paymentSummary} wrap={false}>
       {status === "partial" ? (
-        <View style={styles.paymentSummaryBox}> 
+        <View style={styles.paymentSummaryBox}>
           <Text style={styles.paymentSummaryTitle}>Advance paid</Text>
-          <Text style={styles.paymentSummaryValue}>₹{formatAmount(paidAmount)}</Text>
+          <Text style={styles.paymentSummaryValue}>
+            ₹{formatAmount(paidAmount)}
+          </Text>
           <Text style={styles.paymentSummaryDetails}>
             Pending amount: ₹{formatAmount(pendingAmount)}
           </Text>
           {data.payment_mode && (
-            <Text style={styles.paymentSummaryDetails}>Mode: {data.payment_mode}</Text>
+            <Text style={styles.paymentSummaryDetails}>
+              Mode: {data.payment_mode}
+            </Text>
           )}
           {data.paid_date && (
-            <Text style={styles.paymentSummaryDetails}>Paid date: {formatDate(data.paid_date)}</Text>
+            <Text style={styles.paymentSummaryDetails}>
+              Paid date: {formatDate(data.paid_date)}
+            </Text>
           )}
         </View>
       ) : (
         <View style={styles.paymentSummaryBoxPaid}>
           <Text style={styles.paymentSummaryTitle}>Paid</Text>
-          <Text style={styles.paymentSummaryValue}>₹{formatAmount(paidAmount)}</Text>
+          <Text style={styles.paymentSummaryValue}>
+            ₹{formatAmount(paidAmount)}
+          </Text>
           {data.payment_mode && (
-            <Text style={styles.paymentSummaryDetails}>Mode: {data.payment_mode}</Text>
+            <Text style={styles.paymentSummaryDetails}>
+              Mode: {data.payment_mode}
+            </Text>
           )}
           {data.paid_date && (
-            <Text style={styles.paymentSummaryDetails}>Paid date: {formatDate(data.paid_date)}</Text>
+            <Text style={styles.paymentSummaryDetails}>
+              Paid date: {formatDate(data.paid_date)}
+            </Text>
           )}
         </View>
       )}
@@ -411,7 +443,11 @@ function Footer({ data, firmName }) {
 
   return (
     <View style={styles.footer} wrap={false}>
-      {hasBank ? <BankDetails data={data} /> : <View style={styles.footerSpacer} />}
+      {hasBank ? (
+        <BankDetails data={data} />
+      ) : (
+        <View style={styles.footerSpacer} />
+      )}
 
       <View style={styles.footerRight}>
         {qrSrc && (
@@ -438,7 +474,9 @@ export default function InvoicePDF({ data }) {
   const plain = template === "plain";
 
   return (
-    <Document title={`${getDocumentLabel(data.doc_type)} ${data.bill_number ?? ""}`}>
+    <Document
+      title={`${getDocumentLabel(data.doc_type)} ${data.bill_number ?? ""}`}
+    >
       <Page size="A4" style={styles.page}>
         <Header data={data} template={template} />
         <BillMeta data={data} />
@@ -574,7 +612,7 @@ const styles = StyleSheet.create({
     minHeight: 24,
   },
   tableHead: {
-    backgroundColor: "#ffffff", 
+    backgroundColor: "#ffffff",
   },
   tableCell: {
     justifyContent: "center",
@@ -586,7 +624,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#cbd5e1",
   },
   tableHeaderText: {
-    color: "#000000", 
+    color: "#000000",
     fontSize: 9,
     fontFamily: "Helvetica-Bold",
   },
@@ -640,13 +678,13 @@ const styles = StyleSheet.create({
     color: "#dc2626",
   },
   totalRow: {
-    backgroundColor: "#ffffff", 
+    backgroundColor: "#ffffff",
   },
   totalCell: {
-    backgroundColor: "#ffffff", 
+    backgroundColor: "#ffffff",
   },
   totalText: {
-    color: "#000000", 
+    color: "#000000",
     fontFamily: "Helvetica-Bold",
   },
   wordsRow: {
@@ -716,7 +754,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    marginTop: "auto", 
+    marginTop: "auto",
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: "#cbd5e1",
