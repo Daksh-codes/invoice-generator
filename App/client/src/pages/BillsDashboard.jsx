@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import eye from "../assets/eye.png";
 import eyeCrossed from "../assets/eye-crossed.png";
+import { useFinancialYear } from "../context/FinancialYearContext";
 import {
   getAllBills,
   getAllIssuers,
@@ -747,6 +748,7 @@ function PaymentModeCell({ bill, modes, onAddMode, onUpdated }) {
 // ── Main Dashboard ─────────────────────────────────────────────────────────
 export default function BillsDashboard() {
   const navigate = useNavigate();
+  const { financialYear } = useFinancialYear();
 
   const [bills, setBills] = useState([]);
   const [issuers, setIssuers] = useState([]);
@@ -771,9 +773,19 @@ export default function BillsDashboard() {
   useEffect(() => {
     async function load() {
       try {
+        setLoading(true);
+        setError(null);
         const [invRes, quoRes, issuersRes, modesRes] = await Promise.all([
-          getAllBills({ doc_type: "INVOICE" }),
-          getAllBills({ doc_type: "QUOTATION" }),
+          getAllBills({
+            doc_type: "INVOICE",
+            date_from: financialYear.startDate,
+            date_to: financialYear.endDate,
+          }),
+          getAllBills({
+            doc_type: "QUOTATION",
+            date_from: financialYear.startDate,
+            date_to: financialYear.endDate,
+          }),
           getAllIssuers(),
           getPaymentModes(),
         ]);
@@ -787,7 +799,7 @@ export default function BillsDashboard() {
       }
     }
     load();
-  }, []);
+  }, [financialYear.startDate, financialYear.endDate]);
 
   const handleUpdated = useCallback((billId, payload) => {
     setBills((prev) =>
@@ -844,15 +856,17 @@ export default function BillsDashboard() {
   const filtered = useMemo(() => {
     return bills.filter((b) => {
       if (b.doc_type !== docTypeFilter) return false;
+      const billDate = b.bill_date?.slice(0, 10);
+      if (!billDate) return false;
+      if (billDate < financialYear.startDate || billDate > financialYear.endDate)
+        return false;
       if (filterFirm && b.issuer_id !== Number(filterFirm)) return false;
       if (filterStatus && b.payment_status?.toLowerCase() !== filterStatus)
         return false;
       if (filterMode && (b.payment_mode ?? "") !== filterMode) return false;
       if (filterDateFrom || filterDateTo) {
-        const d = b.bill_date?.slice(0, 10);
-        if (!d) return false;
-        if (filterDateFrom && d < filterDateFrom) return false;
-        if (filterDateTo && d > filterDateTo) return false;
+        if (filterDateFrom && billDate < filterDateFrom) return false;
+        if (filterDateTo && billDate > filterDateTo) return false;
       }
       if (search) {
         const q = search.toLowerCase();
@@ -870,6 +884,8 @@ export default function BillsDashboard() {
   }, [
     bills,
     issuers,
+    financialYear.startDate,
+    financialYear.endDate,
     docTypeFilter,
     filterFirm,
     filterStatus,
@@ -884,7 +900,6 @@ export default function BillsDashboard() {
     const total = nonVoid.reduce((s, b) => s + Number(b.total ?? 0), 0);
     const paid = nonVoid.reduce((s, b) => s + Number(b.paid_amount ?? 0), 0);
     const pending = total - paid;
-    //const pending = nonVoid.filter(b => b.payment_status !== "paid").reduce((s, b) => s + Number(b.total ?? 0), 0);
     return { count: filtered.length, total, paid, pending };
   }, [filtered]);
 
@@ -921,7 +936,6 @@ export default function BillsDashboard() {
         }));
 
         const ws = XLSX.utils.json_to_sheet(rows);
-        // Column widths
         ws["!cols"] = [
           { wch: 16 },
           { wch: 10 },
@@ -984,7 +998,6 @@ export default function BillsDashboard() {
   return (
     <div className="min-h-screen bg-blue-100 font-sans">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-        {/* Doc type toggle */}
         <div className="flex justify-between">
           <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 shadow-sm p-1.5 w-fit">
             {["INVOICE", "QUOTATION"].map((type) => (
@@ -1003,9 +1016,6 @@ export default function BillsDashboard() {
             ))}
           </div>
           <div className="flex gap-4">
-            {/* Hide-Unhide Button */}
-            
-            {/* Export to excel */}
             <button
               onClick={exportToExcel}
               className="shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm transition-colors"
@@ -1028,7 +1038,6 @@ export default function BillsDashboard() {
           </div>
         </div>
 
-        {/* Summary Cards */}
         <div className="flex items-center justify-between gap-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
             <SummaryCard
@@ -1054,7 +1063,6 @@ export default function BillsDashboard() {
           </div>
         </div>
 
-        {/* Filters */}
         <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 items-end">
             <div className="col-span-2">
@@ -1178,7 +1186,6 @@ export default function BillsDashboard() {
           </div>
         </div>
 
-        {/* Table */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
           {filtered.length === 0 ? (
             <div className="py-16 text-center text-slate-400 text-sm">

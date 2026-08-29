@@ -14,6 +14,7 @@ import {
   Bar,
 } from "recharts";
 import { getAllBills, getPayments } from "../api";
+import { useFinancialYear } from "../context/FinancialYearContext";
 
 const COLORS = [
   "#0f172a",
@@ -76,6 +77,7 @@ function getModeTotals(rows) {
 }
 
 export default function Reports() {
+  const { financialYear } = useFinancialYear();
   const [paymentRows, setPaymentRows] = useState([]);
   const [selectedMode, setSelectedMode] = useState("");
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,10 @@ export default function Reports() {
         setLoading(true);
         setError("");
 
-        const billsRes = await getAllBills();
+        const billsRes = await getAllBills({
+          date_from: financialYear.startDate,
+          date_to: financialYear.endDate,
+        });
         const bills = Array.isArray(billsRes.data)
           ? billsRes.data
           : (billsRes.data?.bills ?? []);
@@ -108,7 +113,6 @@ export default function Reports() {
             };
           }),
         );
-        // console.log(bills)
         const rows = [];
 
         paymentsByBill.forEach(({ bill, payments }) => {
@@ -148,14 +152,29 @@ export default function Reports() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [financialYear.startDate, financialYear.endDate]);
 
   const dateFilteredPayments = useMemo(
     () =>
-      paymentRows.filter((payment) =>
-        isWithinDateRange(payment.date, filterDateFrom, filterDateTo),
-      ),
-    [paymentRows, filterDateFrom, filterDateTo],
+      paymentRows.filter((payment) => {
+        if (
+          !isWithinDateRange(
+            payment.date,
+            financialYear.startDate,
+            financialYear.endDate,
+          )
+        ) {
+          return false;
+        }
+        return isWithinDateRange(payment.date, filterDateFrom, filterDateTo);
+      }),
+    [
+      paymentRows,
+      financialYear.startDate,
+      financialYear.endDate,
+      filterDateFrom,
+      filterDateTo,
+    ],
   );
 
   const modeTotals = useMemo(
@@ -202,14 +221,12 @@ export default function Reports() {
     <div className="min-h-screen bg-blue-100 font-sans">
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
         <div className="flex justify-between">
-          {/* Heading */}
           <div>
             <h1 className="text-lg font-bold text-slate-800">Reports</h1>
             <p className="text-xs text-slate-400 mt-0.5">
               Payment totals by mode
             </p>
           </div>
-          {/* Date Filter */}
           <div className="flex gap-8">
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-slate-600 uppercase tracking-wider block mb-1">
