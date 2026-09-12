@@ -415,7 +415,7 @@ export default function FirmForm() {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <SectionHeader
             title="Firm Details"
-            subtitle="This information appears on all invoices and miscellaneous bills"
+            subtitle="This information appears on all invoices and professional bills"
           />
 
           {/* Logo upload */}
@@ -546,7 +546,7 @@ export default function FirmForm() {
               <p className="text-xs text-slate-400 mt-0.5">
                 {isEdit
                   ? "Prefixes are locked after bills are created"
-                  : "Set the starting prefix for invoices and miscellaneous bills"}
+                  : "Set the starting prefix for invoices and professional bills"}
               </p>
             </div>
             {isEdit && (
@@ -575,7 +575,7 @@ export default function FirmForm() {
               />
             </Field>
             <Field
-              label="Miscellaneous Prefix"
+              label="Professional Prefix"
               required
               error={errors.quotation_prefix}
             >

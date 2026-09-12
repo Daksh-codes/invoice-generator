@@ -1,4 +1,4 @@
-const CURRENT_MIGRATION_VERSION = 11;
+const CURRENT_MIGRATION_VERSION = 12;
 
 function createCurrentSchema(db, { markMigrations = false } = {}) {
   db.exec(`
@@ -56,6 +56,8 @@ function createCurrentSchema(db, { markMigrations = false } = {}) {
       subtotal REAL NOT NULL,
       discount REAL DEFAULT 0,
       tax_total REAL DEFAULT 0,
+      tds_rate REAL DEFAULT 0,
+      tds_amount REAL DEFAULT 0,
       cgst REAL DEFAULT 0,
       sgst REAL DEFAULT 0,
       igst REAL DEFAULT 0,

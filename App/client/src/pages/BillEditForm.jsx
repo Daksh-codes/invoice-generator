@@ -305,6 +305,8 @@ export default function BillEditForm() {
   const [gstEnabled, setGstEnabled] = useState(false);
   const [gstPercent, setGstPercent] = useState("18");
   const [isIgst, setIsIgst] = useState(false);
+  const [tdsEnabled, setTdsEnabled] = useState(false);
+  const [tdsPercent, setTdsPercent] = useState("10");
 
   // Discount
   const [discountEnabled, setDiscountEnabled] = useState(false);
@@ -363,6 +365,10 @@ export default function BillEditForm() {
           setIsIgst(bill.is_igst === 1);
         }
 
+        const hasTds = Number(bill.tds_amount) > 0 || Number(bill.tds_rate) > 0;
+        setTdsEnabled(hasTds);
+        setTdsPercent(hasTds ? String(bill.tds_rate ?? 10) : "10");
+
         // Discount — infer from saved values
         const hasDiscount = Number(bill.discount) > 0;
         setDiscountEnabled(hasDiscount);
@@ -397,7 +403,9 @@ export default function BillEditForm() {
   const cgst = isIgst ? 0 : taxTotal / 2;
   const sgst = isIgst ? 0 : taxTotal / 2;
   const igst = isIgst ? taxTotal : 0;
-  const total = taxableAmount + taxTotal;
+  const tdsRate = parseFloat(tdsPercent) || 0;
+  const tdsAmount = tdsEnabled ? (subtotal * tdsRate) / 100 : 0;
+  const total = taxableAmount + taxTotal - tdsAmount;
   const totalInWords = toWords(total);
 
   const clientOptions = clients.map((c) => ({
@@ -474,6 +482,8 @@ export default function BillEditForm() {
       subtotal,
       discount: discountAmt,
       tax_total: taxTotal,
+      tds_rate: tdsEnabled ? tdsRate : 0,
+      tds_amount: tdsEnabled ? tdsAmount : 0,
       cgst,
       sgst,
       igst,
@@ -513,7 +523,7 @@ export default function BillEditForm() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-slate-800">
-              Edit {docType === "INVOICE" ? "Invoice" : "Miscellaneous"}
+              Edit {docType === "INVOICE" ? "Invoice" : "Professional"}
             </h1>
             <p className="text-sm text-slate-400 font-mono mt-0.5">
               {billNumber} · {firmName}
@@ -547,7 +557,7 @@ export default function BillEditForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Bill number — read only */}
             <Field
-              label={docType === "INVOICE" ? "Invoice No." : "Miscellaneous No."}
+              label={docType === "INVOICE" ? "Invoice No." : "Professional No."}
             >
               <input
                 value={billNumber}
@@ -813,6 +823,31 @@ export default function BillEditForm() {
                 </div>
               </div>
             )}
+
+            <Toggle
+              checked={tdsEnabled}
+              onChange={setTdsEnabled}
+              label="Apply TDS"
+            />
+
+            {tdsEnabled && (
+              <div className="ml-1 flex items-center gap-3">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={tdsPercent}
+                  onChange={(e) => setTdsPercent(e.target.value)}
+                  placeholder="10"
+                  className="w-28"
+                />
+                <span className="text-sm text-slate-500">%</span>
+                <span className="text-sm text-slate-500">
+                  TDS ₹{fmt(tdsAmount)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Summary */}
@@ -849,8 +884,14 @@ export default function BillEditForm() {
                   </div>
                 </>
               ))}
+            {tdsEnabled && tdsAmount > 0 && (
+              <div className="flex justify-between text-sm text-red-500">
+                <span>TDS ({tdsPercent}%)</span>
+                <span className="font-mono">− ₹{fmt(tdsAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-base font-bold text-slate-800 border-t border-slate-200 pt-2 mt-1">
-              <span>Total</span>
+              <span>Net Payable Amount</span>
               <span className="font-mono">₹{fmt(total)}</span>
             </div>
             {totalInWords && (

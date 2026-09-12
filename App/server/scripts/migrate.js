@@ -249,6 +249,21 @@ const migrations = [
       `).run();
     },
   },
+  {
+    version: 12,
+    description: "Add invoice level TDS fields",
+    up: (db) => {
+      const invoiceColumns = db.prepare("PRAGMA table_info(invoice)").all();
+
+      if (!invoiceColumns.some((c) => c.name === "tds_rate")) {
+        db.exec(`ALTER TABLE invoice ADD COLUMN tds_rate REAL DEFAULT 0`);
+      }
+
+      if (!invoiceColumns.some((c) => c.name === "tds_amount")) {
+        db.exec(`ALTER TABLE invoice ADD COLUMN tds_amount REAL DEFAULT 0`);
+      }
+    },
+  },
 ];
 
 function runMigrations(db) {

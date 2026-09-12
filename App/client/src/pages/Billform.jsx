@@ -1,7 +1,7 @@
 // src/pages/BillForm.jsx
 // Route: /bills/new
 // Features:
-//   - Invoice or Miscellaneous toggle
+//   - Invoice or Professional toggle
 //   - Firm dropdown (required)
 //   - Client dropdown + inline "create new" if typed name doesn't exist
 //   - Line items (description + amount, CA style)
@@ -329,6 +329,8 @@ export default function BillForm() {
   const [gstEnabled, setGstEnabled] = useState(false);
   const [gstPercent, setGstPercent] = useState("18");
   const [isIgst, setIsIgst] = useState(false);
+  const [tdsEnabled, setTdsEnabled] = useState(false);
+  const [tdsPercent, setTdsPercent] = useState("10");
 
   // Discount
   const [discountEnabled, setDiscountEnabled] = useState(false);
@@ -393,8 +395,10 @@ export default function BillForm() {
   const cgst = isIgst ? 0 : taxTotal / 2;
   const sgst = isIgst ? 0 : taxTotal / 2;
   const igst = isIgst ? taxTotal : 0;
+  const tdsRate = parseFloat(tdsPercent) || 0;
+  const tdsAmount = tdsEnabled ? (subtotal * tdsRate) / 100 : 0;
 
-  const total = taxableAmount + taxTotal;
+  const total = taxableAmount + taxTotal - tdsAmount;
   const totalInWords = toWords(total);
 
   // ── Combobox options ──────────────────────────────────────────────────
@@ -512,6 +516,8 @@ export default function BillForm() {
       subtotal,
       discount: discountAmt,
       tax_total: taxTotal,
+      tds_rate: tdsEnabled ? tdsRate : 0,
+      tds_amount: tdsEnabled ? tdsAmount : 0,
       cgst,
       sgst,
       igst,
@@ -563,7 +569,7 @@ export default function BillForm() {
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                {type === "INVOICE" ? "Invoice" : "Miscellaneous"}
+                {type === "INVOICE" ? "Invoice" : "Professional"}
               </button>
             ))}
           </div>
@@ -688,7 +694,7 @@ export default function BillForm() {
 
             {/* Bill number preview */}
             <Field
-              label={docType === "INVOICE" ? "Invoice No." : "Miscellaneous No."}
+              label={docType === "INVOICE" ? "Invoice No." : "Professional No."}
             >
               <input
                 value={nextNumber || "— select a firm —"}
@@ -945,6 +951,31 @@ export default function BillForm() {
                 </div>
               </div>
             )}
+
+            <Toggle
+              checked={tdsEnabled}
+              onChange={setTdsEnabled}
+              label="Apply TDS"
+            />
+
+            {tdsEnabled && (
+              <div className="ml-1 flex items-center gap-3">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={tdsPercent}
+                  onChange={(e) => setTdsPercent(e.target.value)}
+                  placeholder="10"
+                  className="w-28"
+                />
+                <span className="text-sm text-slate-500">%</span>
+                <span className="text-sm text-slate-500">
+                  TDS ₹{fmt(tdsAmount)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Summary */}
@@ -981,8 +1012,14 @@ export default function BillForm() {
                   </div>
                 </>
               ))}
+            {tdsEnabled && tdsAmount > 0 && (
+              <div className="flex justify-between text-sm text-red-500">
+                <span>TDS ({tdsPercent}%)</span>
+                <span className="font-mono">− ₹{fmt(tdsAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-base font-bold text-slate-800 border-t border-slate-200 pt-2 mt-1">
-              <span>Total</span>
+              <span>Net Payable Amount</span>
               <span className="font-mono">₹{fmt(total)}</span>
             </div>
             {totalInWords && (
@@ -1030,7 +1067,7 @@ export default function BillForm() {
             )}
             {loading
               ? "Creating…"
-              : `Create ${docType === "INVOICE" ? "Invoice" : "Miscellaneous"}`}
+              : `Create ${docType === "INVOICE" ? "Invoice" : "Professional"}`}
           </button>
         </div>
       </div>

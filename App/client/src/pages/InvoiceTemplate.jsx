@@ -35,6 +35,8 @@ function ItemsTable({ data, plain = false }) {
     paid_amount,
     payment_status,
     tax_total,
+    tds_rate,
+    tds_amount,
     cgst,
     sgst,
     igst,
@@ -46,9 +48,10 @@ function ItemsTable({ data, plain = false }) {
   const advanceAmount = Number(paid_amount ?? 0);
   const showDiscount = discount > 0;
   const showTax = is_gst_enabled === 1 && tax_total > 0;
+  const showTds = Number(tds_amount) > 0;
   const showAdvance = payment_status === "partial" && advanceAmount > 0;
   const displayTotal = showAdvance ? Math.max(total - advanceAmount, 0) : total;
-  const showSubtotal = showDiscount || showTax;
+  const showSubtotal = showDiscount || showTax || showTds;
 
   return (
     <table className="w-full border-collapse mt-2">
@@ -164,9 +167,19 @@ function ItemsTable({ data, plain = false }) {
             </tr>
           </>
         )}
+        {showTds && (
+          <tr>
+            <td className="border border-slate-200 p-2 text-right text-sm text-red-600">
+              TDS ({formatAmount(tds_rate)}%)
+            </td>
+            <td className="border border-slate-200 p-2 text-right text-sm text-red-600">
+              − {formatAmount(tds_amount)}
+            </td>
+          </tr>
+        )}
         <tr className="bg-slate-800 text-white">
           <td className="border border-slate-700 p-2 text-right font-bold">
-            Total
+            Net Payable Amount
           </td>
           <td className="border border-slate-700 p-2 text-right font-bold">
             {formatAmount(displayTotal)}
@@ -354,7 +367,7 @@ function BillMeta({ data }) {
       </div>
       <div className="text-right">
         <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">
-          {doc_type === "QUOTATION" ? "Miscellaneous No." : "Invoice No."}
+          {doc_type === "QUOTATION" ? "Professional No." : "Invoice No."}
         </p>
         <p className="font-bold text-slate-800">{bill_number}</p>
         <p className="text-sm text-slate-500 mt-0.5">{formatDate(bill_date)}</p>
@@ -424,7 +437,7 @@ function WithLogoTemplate({ data }) {
           </div>
           <div className="text-right shrink-0">
             <p className="text-2xl font-bold tracking-widest text-slate-700 uppercase">
-              {doc_type === "QUOTATION" ? "Miscellaneous" : "Invoice"}
+              {doc_type === "QUOTATION" ? "Professional" : "Invoice"}
             </p>
           </div>
         </div>
@@ -486,7 +499,7 @@ function WithoutLogoTemplate({ data }) {
           </div>
           <div className="text-right shrink-0">
             <p className="text-2xl font-bold tracking-widest text-slate-700 uppercase">
-              {doc_type === "QUOTATION" ? "Miscellaneous" : "Invoice"}
+              {doc_type === "QUOTATION" ? "Professional" : "Invoice"}
             </p>
           </div>
         </div>
@@ -519,7 +532,7 @@ function PlainTemplate({ data }) {
         {/* Header — just the doc type */}
         <div className="text-center pb-4 border-b-2 border-slate-800">
           <h1 className="text-3xl font-bold tracking-widest text-slate-800 uppercase">
-            {doc_type === "QUOTATION" ? "Miscellaneous" : "Invoice"}
+            {doc_type === "QUOTATION" ? "Professional" : "Invoice"}
           </h1>
         </div>
 

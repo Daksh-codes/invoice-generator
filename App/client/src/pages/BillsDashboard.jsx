@@ -67,6 +67,12 @@ const STATUS_STYLES = {
   },
 };
 
+function docTypeLabel(type) {
+  if (type === "INVOICE") return "Invoice";
+  if (type === "QUOTATION") return "Professional";
+  return "Both";
+}
+
 // ── Shared: Mode dropdown with inline add ─────────────────────────────────
 function splitPaymentMode(value) {
   const raw = value ?? "";
@@ -879,10 +885,11 @@ export default function BillsDashboard() {
   const [hide, SetHide] = useState(true)
 
   // Filters
-  const [docTypeFilter, setDocTypeFilter] = useState("INVOICE");
+  const [docTypeFilter, setDocTypeFilter] = useState("ALL");
   const [filterFirm, setFilterFirm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterMode, setFilterMode] = useState("");
+  const [filterTds, setFilterTds] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [search, setSearch] = useState("");
@@ -972,7 +979,7 @@ export default function BillsDashboard() {
 
   const filtered = useMemo(() => {
     return bills.filter((b) => {
-      if (b.doc_type !== docTypeFilter) return false;
+      if (docTypeFilter !== "ALL" && b.doc_type !== docTypeFilter) return false;
       const billDate = b.bill_date?.slice(0, 10);
       if (!billDate) return false;
       if (billDate < financialYear.startDate || billDate > financialYear.endDate)
@@ -981,6 +988,8 @@ export default function BillsDashboard() {
       if (filterStatus && b.payment_status?.toLowerCase() !== filterStatus)
         return false;
       if (filterMode && getPaymentModeName(b.payment_mode) !== filterMode)
+        return false;
+      if (filterTds === "with" && Number(b.tds_amount ?? 0) <= 0)
         return false;
       if (filterDateFrom || filterDateTo) {
         if (filterDateFrom && billDate < filterDateFrom) return false;
@@ -1008,6 +1017,7 @@ export default function BillsDashboard() {
     filterFirm,
     filterStatus,
     filterMode,
+    filterTds,
     filterDateFrom,
     filterDateTo,
     search,
@@ -1041,7 +1051,7 @@ export default function BillsDashboard() {
       (XLSX) => {
         const rows = filtered.map((bill) => ({
           "Bill No.": bill.bill_number ?? "",
-          Type: bill.doc_type ?? "",
+          Type: docTypeLabel(bill.doc_type),
           Client: bill.client_name ?? "",
           Firm: issuers.find((i) => i.id === bill.issuer_id)?.firm_name ?? "",
           "Bill Date": bill.bill_date?.slice(0, 10) ?? "",
@@ -1089,6 +1099,7 @@ export default function BillsDashboard() {
     setFilterFirm("");
     setFilterStatus("");
     setFilterMode("");
+    setFilterTds("");
     setFilterDateFrom("");
     setFilterDateTo("");
     setSearch("");
@@ -1098,6 +1109,7 @@ export default function BillsDashboard() {
     filterFirm ||
     filterStatus ||
     filterMode ||
+    filterTds ||
     filterDateFrom ||
     filterDateTo ||
     search;
@@ -1126,7 +1138,7 @@ export default function BillsDashboard() {
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         <div className="flex justify-between">
           <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 shadow-sm p-1.5 w-fit">
-            {["INVOICE", "QUOTATION"].map((type) => (
+            {["ALL", "INVOICE", "QUOTATION"].map((type) => (
               <button
                 key={type}
                 type="button"
@@ -1137,7 +1149,7 @@ export default function BillsDashboard() {
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                {type === "INVOICE" ? "Invoices" : "Miscellaneous"}
+                {type === "ALL" ? "Both" : type === "INVOICE" ? "Invoices" : "Professional"}
               </button>
             ))}
           </div>
@@ -1190,8 +1202,8 @@ export default function BillsDashboard() {
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 items-end">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
+            <div className="md:col-span-2 xl:col-span-4">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1">
                 Search
               </label>
@@ -1219,7 +1231,7 @@ export default function BillsDashboard() {
               </div>
             </div>
 
-            <div>
+            <div className="xl:col-span-2">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1">
                 Firm
               </label>
@@ -1237,7 +1249,7 @@ export default function BillsDashboard() {
               </select>
             </div>
 
-            <div>
+            <div className="xl:col-span-2">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1">
                 Status
               </label>
@@ -1253,7 +1265,7 @@ export default function BillsDashboard() {
               </select>
             </div>
 
-            <div>
+            <div className="xl:col-span-2">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1">
                 Mode
               </label>
@@ -1274,32 +1286,47 @@ export default function BillsDashboard() {
               </select>
             </div>
 
-            <div>
+            <div className="xl:col-span-2">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1">
-                From
+                TDS
               </label>
-              <input
-                type="date"
-                value={filterDateFrom}
-                onChange={(e) => setFilterDateFrom(e.target.value)}
+              <select
+                value={filterTds}
+                onChange={(e) => setFilterTds(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 bg-slate-50"
-              />
+              >
+                <option value="">All Bills</option>
+                <option value="with">With TDS</option>
+              </select>
             </div>
 
-            <div>
+            <div className="md:col-span-2 xl:col-span-4">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1">
-                To
+                Date Range
               </label>
-              <input
-                type="date"
-                value={filterDateTo}
-                min={filterDateFrom}
-                onChange={(e) => setFilterDateTo(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 bg-slate-50"
-              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  aria-label="From date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 bg-slate-50"
+                />
+                <input
+                  type="date"
+                  aria-label="To date"
+                  value={filterDateTo}
+                  min={filterDateFrom}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 bg-slate-50"
+                />
+              </div>
             </div>
 
-            <div className="flex items-end">
+            <div className="xl:col-span-2">
+              <span className="text-xs font-medium text-transparent uppercase tracking-wider block mb-1 select-none">
+                Clear
+              </span>
               <button
                 onClick={clearFilters}
                 disabled={!hasFilters}

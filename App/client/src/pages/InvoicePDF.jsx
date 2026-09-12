@@ -48,7 +48,7 @@ function getImageSrc(path) {
 }
 
 function getDocumentLabel(docType) {
-  return docType === "QUOTATION" ? "Miscellaneous" : "Invoice";
+  return docType === "QUOTATION" ? "Professional" : "Invoice";
 }
 
 function Header({ data, template }) {
@@ -62,16 +62,13 @@ function Header({ data, template }) {
     is_gst_enabled,
     pan,
     firm_address,
-    doc_type,
   } = data;
   const showLogo = template === "with_logo" && logo;
   const isPlain = template === "plain";
 
   if (isPlain) {
     return (
-      <View style={[styles.header, styles.plainHeader]}>
-        <Text style={styles.documentTitle}>{getDocumentLabel(doc_type)}</Text>
-      </View>
+      <View style={[styles.header, styles.plainHeader]} />
     );
   }
 
@@ -95,7 +92,6 @@ function Header({ data, template }) {
           </View>
         </View>
       </View>
-      <Text style={styles.documentTitle}>{getDocumentLabel(doc_type)}</Text>
     </View>
   );
 }
@@ -130,7 +126,7 @@ function BillMeta({ data }) {
 
       <View style={styles.billNumbers}>
         <Text style={styles.sectionLabel}>
-          {doc_type === "QUOTATION" ? "Miscellaneous No." : "Invoice No."}
+          {doc_type === "QUOTATION" ? "Professional No." : "Invoice No."}
         </Text>
         <Text style={styles.billNumber}>{bill_number}</Text>
         <Text style={styles.bodyText}>{formatDate(bill_date)}</Text>
@@ -211,6 +207,8 @@ function ItemsTable({ data, plain }) {
     paid_amount,
     payment_status,
     tax_total,
+    tds_rate,
+    tds_amount,
     cgst,
     sgst,
     igst,
@@ -221,9 +219,10 @@ function ItemsTable({ data, plain }) {
   const advanceAmount = Number(paid_amount ?? 0);
   const showDiscount = Number(discount) > 0;
   const showTax = is_gst_enabled === 1 && Number(tax_total) > 0;
+  const showTds = Number(tds_amount) > 0;
   const showAdvance = payment_status === "partial" && advanceAmount > 0;
   const displayTotal = showAdvance ? Math.max(total - advanceAmount, 0) : total;
-  const showSubtotal = showDiscount || showTax;
+  const showSubtotal = showDiscount || showTax || showTds;
 
   return (
     <View style={styles.table}>
@@ -323,8 +322,16 @@ function ItemsTable({ data, plain }) {
           <AmountRow label="SGST" value={formatAmount(sgst)} plain={plain} />
         </>
       )}
+      {showTds && (
+        <AmountRow
+          label={`TDS (${formatAmount(tds_rate)}%)`}
+          value={`- ${formatAmount(tds_amount)}`}
+          plain={plain}
+          danger
+        />
+      )}
       <AmountRow
-        label="Total"
+        label="Net Payable Amount"
         value={formatAmount(displayTotal)}
         plain={plain}
         strong

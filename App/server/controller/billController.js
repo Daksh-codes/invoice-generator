@@ -7,10 +7,10 @@ const insertBillStmt = db.prepare(`
   INSERT INTO invoice (
     issuer_id, client_id, template, bill_number, bill_date,
     payment_terms, due_date, subtotal, discount,
-    tax_total, cgst, sgst, igst, is_igst,
+    tax_total, tds_rate, tds_amount, cgst, sgst, igst, is_igst,
     total, total_in_words, notes, spacer_rows,
     doc_type, status
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 const insertItemStmt = db.prepare(`
@@ -127,6 +127,22 @@ function validateBillPayload(payload, status) {
       statusCode: 400,
     });
 
+  if (
+    payload.tds_rate != null &&
+    (isNaN(payload.tds_rate) || payload.tds_rate < 0)
+  )
+    throw Object.assign(new Error("tds_rate must be a non-negative number"), {
+      statusCode: 400,
+    });
+
+  if (
+    payload.tds_amount != null &&
+    (isNaN(payload.tds_amount) || payload.tds_amount < 0)
+  )
+    throw Object.assign(new Error("tds_amount must be a non-negative number"), {
+      statusCode: 400,
+    });
+
   // Active bills must have at least one valid item
   if (status === "active") {
     if (!Array.isArray(payload.items) || payload.items.length === 0)
@@ -205,6 +221,8 @@ const createBillTx = db.transaction((payload, doc_type) => {
     payload.subtotal,
     payload.discount || 0,
     payload.tax_total || 0,
+    payload.tds_rate || 0,
+    payload.tds_amount || 0,
     payload.cgst || 0,
     payload.sgst || 0,
     payload.igst || 0,
@@ -314,6 +332,7 @@ const convertTx = db.transaction((quotationId) => {
   const result = insertBillStmt.run(
     quotation.issuer_id,
     quotation.client_id,
+    quotation.template || "with_logo",
     bill_number,
     quotation.bill_date,
     quotation.payment_terms,
@@ -321,6 +340,8 @@ const convertTx = db.transaction((quotationId) => {
     quotation.subtotal,
     quotation.discount,
     quotation.tax_total,
+    quotation.tds_rate || 0,
+    quotation.tds_amount || 0,
     quotation.cgst,
     quotation.sgst,
     quotation.igst,
@@ -328,6 +349,7 @@ const convertTx = db.transaction((quotationId) => {
     quotation.total,
     quotation.total_in_words,
     quotation.notes,
+    quotation.spacer_rows ?? 3,
     "INVOICE",
     "active",
   );
@@ -448,6 +470,8 @@ function getAll(req, res) {
       invoice.payment_mode, 
       invoice.transaction_number,
       invoice.paid_amount,
+      invoice.tds_rate,
+      invoice.tds_amount,
       spacer_rows
     FROM invoice
     JOIN client ON invoice.client_id = client.id
@@ -745,6 +769,8 @@ const updateBillTx = db.transaction((id, payload) => {
       subtotal       = ?,
       discount       = ?,
       tax_total      = ?,
+      tds_rate       = ?,
+      tds_amount     = ?,
       cgst           = ?,
       sgst           = ?,
       igst           = ?,
@@ -757,6 +783,7 @@ const updateBillTx = db.transaction((id, payload) => {
     payload.payment_terms ?? null, payload.notes ?? null,
     payload.template, payload.spacer_rows ?? 3,
     payload.subtotal, payload.discount ?? 0, payload.tax_total ?? 0,
+    payload.tds_rate ?? 0, payload.tds_amount ?? 0,
     payload.cgst ?? 0, payload.sgst ?? 0, payload.igst ?? 0,
     payload.is_igst ?? 0, payload.total, payload.total_in_words, id
   );
