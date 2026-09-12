@@ -127,7 +127,7 @@ function ItemsTable({ data, plain = false }) {
         {showAdvance && (
           <tr>
             <td className="border border-slate-200 p-2 text-right text-sm text-amber-600">
-              Advance paid
+              Payment on Account
             </td>
             <td className="border border-slate-200 p-2 text-right text-sm text-amber-700">
               {formatAmount(advanceAmount)}
@@ -193,6 +193,7 @@ function PinnedFooter({ data, firmName }) {
     ifsc_code,
     branch,
     upi_qr,
+    signature_image,
   } = data;
 
   const hasBank = !!account_holder_name;
@@ -253,8 +254,17 @@ function PinnedFooter({ data, firmName }) {
           )}
           <div className="flex flex-col items-center">
             {firmName && (
-              <p className="text-xs text-slate-600 mb-16">For {firmName}</p>
+              <p className="text-xs text-slate-600 mb-2">For {firmName}</p>
             )}
+            <div className="h-14 w-36 flex items-end justify-center mb-2">
+              {signature_image && (
+                <img
+                  src={imageUrl(signature_image)}
+                  alt="Signature"
+                  className="max-h-14 max-w-36 object-contain"
+                />
+              )}
+            </div>
             <div className="mt-8 border-t border-slate-400 w-36 text-center">
               <p className="text-[10px] text-slate-400 pt-1">
                 Authorised Signatory
@@ -282,10 +292,13 @@ function PaymentSummary({ data }) {
     <div className="mt-4 px-10 print:px-6">
       {status === "partial" ? (
         <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-amber-900">
-          <div className="font-semibold">Advance paid: ₹{formatAmount(paidAmount)}</div>
+          <div className="font-semibold">Payment on Account: ₹{formatAmount(paidAmount)}</div>
           <div className="text-sm">Pending amount: ₹{formatAmount(pendingAmount)}</div>
           {data.payment_mode && (
             <div className="text-sm">Payment mode: {data.payment_mode}</div>
+          )}
+          {data.payment_transaction_id && (
+            <div className="text-sm">Transaction ID: {data.payment_transaction_id}</div>
           )}
           {data.paid_date && (
             <div className="text-sm">Paid date: {formatDate(data.paid_date)}</div>
@@ -296,6 +309,9 @@ function PaymentSummary({ data }) {
           <div className="font-semibold">Paid: ₹{formatAmount(paidAmount)}</div>
           {data.payment_mode && (
             <div className="text-sm">Payment mode: {data.payment_mode}</div>
+          )}
+          {data.payment_transaction_id && (
+            <div className="text-sm">Transaction ID: {data.payment_transaction_id}</div>
           )}
           {data.paid_date && (
             <div className="text-sm">Paid date: {formatDate(data.paid_date)}</div>
@@ -313,6 +329,7 @@ function BillMeta({ data }) {
     doc_type,
     client_name,
     client_address,
+    client_phone,
     payment_terms,
     due_date,
     client_gstin,
@@ -327,6 +344,9 @@ function BillMeta({ data }) {
         <p className="font-bold text-base text-slate-800">{client_name}</p>
         {client_address && (
           <p className="text-xs text-slate-500 mt-0.5">{client_address}</p>
+        )}
+        {client_phone && (
+          <p className="text-xs text-slate-500 mt-0.5">Phone: {client_phone}</p>
         )}
         {client_gstin && is_gst_enabled === 1 && (
           <p className="text-xs text-slate-500 mt-0.5">GSTIN: {client_gstin}</p>

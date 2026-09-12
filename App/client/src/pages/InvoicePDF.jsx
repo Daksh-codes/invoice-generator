@@ -107,6 +107,7 @@ function BillMeta({ data }) {
     doc_type,
     client_name,
     client_address,
+    client_phone,
     payment_terms,
     due_date,
     client_gstin,
@@ -121,6 +122,7 @@ function BillMeta({ data }) {
         {client_address && (
           <Text style={styles.bodyText}>{client_address}</Text>
         )}
+        {client_phone && <Text style={styles.bodyText}>Phone: {client_phone}</Text>}
         {client_gstin && is_gst_enabled === 1 && (
           <Text style={styles.bodyText}>GSTIN: {client_gstin}</Text>
         )}
@@ -307,7 +309,7 @@ function ItemsTable({ data, plain }) {
       )}
       {showAdvance && (
         <AmountRow
-          label="Advance paid"
+          label="Payment on Account"
           value={formatAmount(advanceAmount)}
           plain={plain}
         />
@@ -345,6 +347,7 @@ function PaymentSummary({ data }) {
   const total = Number(data.total ?? 0);
   const pendingAmount = Math.max(total - paidAmount, 0);
   const status = data.payment_status;
+  const transactionId = data.payment_transaction_id ?? data.transaction_number;
 
   if (!status || status === "unpaid" || paidAmount <= 0) return null;
 
@@ -352,7 +355,7 @@ function PaymentSummary({ data }) {
     <View style={styles.paymentSummary} wrap={false}>
       {status === "partial" ? (
         <View style={styles.paymentSummaryBox}>
-          <Text style={styles.paymentSummaryTitle}>Advance paid</Text>
+          <Text style={styles.paymentSummaryTitle}>Payment on Account</Text>
           <Text style={styles.paymentSummaryValue}>
             ₹{formatAmount(paidAmount)}
           </Text>
@@ -362,6 +365,11 @@ function PaymentSummary({ data }) {
           {data.payment_mode && (
             <Text style={styles.paymentSummaryDetails}>
               Mode: {data.payment_mode}
+            </Text>
+          )}
+          {transactionId && (
+            <Text style={styles.paymentSummaryDetails}>
+              Transaction ID: {transactionId}
             </Text>
           )}
           {data.paid_date && (
@@ -379,6 +387,11 @@ function PaymentSummary({ data }) {
           {data.payment_mode && (
             <Text style={styles.paymentSummaryDetails}>
               Mode: {data.payment_mode}
+            </Text>
+          )}
+          {transactionId && (
+            <Text style={styles.paymentSummaryDetails}>
+              Transaction ID: {transactionId}
             </Text>
           )}
           {data.paid_date && (
@@ -432,6 +445,7 @@ function BankDetails({ data }) {
 
 function Footer({ data, firmName }) {
   const qrSrc = getImageSrc(data.upi_qr);
+  const signatureSrc = getImageSrc(data.signature_image);
   const hasBank = [
     data.account_holder_name,
     data.bank_name,
@@ -459,6 +473,9 @@ function Footer({ data, firmName }) {
 
         <View style={styles.signatureBlock}>
           {firmName && <Text style={styles.signatureFirm}>For {firmName}</Text>}
+          <View style={styles.signatureImageSlot}>
+            {signatureSrc && <Image src={signatureSrc} style={styles.signatureImage} />}
+          </View>
           <View style={styles.signatureLine} />
           <Text style={styles.signatureText}>Authorised Signatory</Text>
         </View>
@@ -835,12 +852,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   signatureFirm: {
-    marginBottom: 54,
+    marginBottom: 6,
     color: "#475569",
     fontSize: 9,
     lineHeight: 1.25,
     textAlign: "center",
     width: 190,
+  },
+  signatureImageSlot: {
+    width: 160,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginBottom: 8,
+  },
+  signatureImage: {
+    width: 150,
+    height: 40,
+    objectFit: "contain",
   },
   signatureLine: {
     width: 160,

@@ -38,6 +38,54 @@ function insertItems(invoice_id, items = []) {
   }
 }
 
+function ensurePaymentColumns() {
+  const paymentColumns = db.prepare("PRAGMA table_info(payments)").all();
+  if (!paymentColumns.some((column) => column.name === "transaction_number")) {
+    db.exec("ALTER TABLE payments ADD COLUMN transaction_number TEXT");
+  }
+  if (!paymentColumns.some((column) => column.name === "transaction_id")) {
+    db.exec("ALTER TABLE payments ADD COLUMN transaction_id TEXT");
+  }
+  db.prepare(`
+    UPDATE payments
+    SET transaction_id = transaction_number
+    WHERE (transaction_id IS NULL OR TRIM(transaction_id) = '')
+      AND transaction_number IS NOT NULL
+      AND TRIM(transaction_number) != ''
+  `).run();
+  db.prepare(`
+    UPDATE payments
+    SET transaction_number = transaction_id
+    WHERE (transaction_number IS NULL OR TRIM(transaction_number) = '')
+      AND transaction_id IS NOT NULL
+      AND TRIM(transaction_id) != ''
+  `).run();
+
+  const modeColumns = db.prepare("PRAGMA table_info(payment_modes)").all();
+  if (!modeColumns.some((column) => column.name === "requires_transaction_id")) {
+    db.exec(
+      "ALTER TABLE payment_modes ADD COLUMN requires_transaction_id INTEGER DEFAULT 0",
+    );
+    db.prepare(`
+      UPDATE payment_modes
+      SET requires_transaction_id = CASE
+        WHEN LOWER(TRIM(label)) = 'cash' THEN 0
+        ELSE 1
+      END
+    `).run();
+  }
+}
+
+function modeRequiresTransactionId(mode) {
+  ensurePaymentColumns();
+  if (!mode) return false;
+  const row = db
+    .prepare("SELECT requires_transaction_id FROM payment_modes WHERE label = ?")
+    .get(mode);
+  if (row) return !!row.requires_transaction_id;
+  return mode.trim().toLowerCase() !== "cash";
+}
+
 // Validates all required fields before any DB write happens
 function validateBillPayload(payload, status) {
   if (!payload.issuer_id)
@@ -414,6 +462,7 @@ function getAll(req, res) {
 }
 
 function getById(req, res) {
+  ensurePaymentColumns();
   const bill = db
     .prepare(
       `
@@ -423,8 +472,18 @@ function getById(req, res) {
       issuer.address AS firm_address, issuer.phone, issuer.email,
       issuer.pan, issuer.signature_image, issuer.gstin, issuer.is_gst_enabled,
       client.name AS client_name, client.address AS client_address,
+      client.phone AS client_phone,
       bank.account_holder_name, bank.bank_name, bank.account_number,
-      bank.account_type, bank.ifsc_code, bank.branch, bank.upi_qr
+      bank.account_type, bank.ifsc_code, bank.branch, bank.upi_qr,
+      (
+        SELECT COALESCE(transaction_id, transaction_number)
+        FROM payments
+        WHERE payments.invoice_id = invoice.id
+          AND COALESCE(transaction_id, transaction_number) IS NOT NULL
+          AND TRIM(COALESCE(transaction_id, transaction_number)) != ''
+        ORDER BY payment_date DESC, id DESC
+        LIMIT 1
+      ) AS payment_transaction_id
     FROM invoice
     JOIN issuer ON invoice.issuer_id = issuer.id
     JOIN client ON invoice.client_id = client.id
@@ -448,7 +507,15 @@ function getById(req, res) {
   const payments = db
     .prepare(
       `
-    SELECT id, invoice_id, amount, mode, transaction_number, payment_date, created_at
+    SELECT
+      id,
+      invoice_id,
+      amount,
+      mode,
+      transaction_number,
+      COALESCE(transaction_id, transaction_number) AS transaction_id,
+      payment_date,
+      created_at
     FROM payments
     WHERE invoice_id = ?
     ORDER BY payment_date ASC, id ASC
@@ -461,6 +528,7 @@ function getById(req, res) {
 
 function updateStatus(req, res) {
   try {
+    ensurePaymentColumns();
     const body = req.body ?? {};
     const {
       payment_status,
@@ -468,6 +536,7 @@ function updateStatus(req, res) {
       payment_mode,
       transaction_number,
       paid_date,
+      transaction_id,
     } = body;
 
     const bill = db
@@ -483,6 +552,13 @@ function updateStatus(req, res) {
     if (payment_status === "unpaid") {
       db.prepare("DELETE FROM payments WHERE invoice_id = ?").run(req.params.id);
     } else if (paid_amount != null) {
+      const transactionId =
+        transaction_id?.trim() || transaction_number?.trim() || null;
+      if (modeRequiresTransactionId(payment_mode) && !transactionId) {
+        return res.status(400).json({
+          message: "transaction_id is required for this payment mode",
+        });
+      }
       const targetPaid =
         payment_status === "paid" ? Number(bill.total ?? 0) : Number(paid_amount);
       if (Number.isNaN(targetPaid) || targetPaid < 0) {
@@ -502,21 +578,25 @@ function updateStatus(req, res) {
       if (amountToAdd > 0.0001) {
         db.prepare(
           `
-          INSERT INTO payments (invoice_id, amount, mode, transaction_number, payment_date)
-          VALUES (?, ?, ?, ?, ?)
+          INSERT INTO payments (
+            invoice_id, amount, mode, transaction_number, transaction_id, payment_date
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
         `,
         ).run(
           req.params.id,
           amountToAdd,
           payment_mode ?? null,
-          transaction_number ?? null,
+          transactionId,
+          transactionId,
           paid_date ?? new Date().toISOString().slice(0, 10),
         );
       }
     } else if (
       payment_mode !== undefined ||
       transaction_number !== undefined ||
-      paid_date !== undefined
+      paid_date !== undefined ||
+      transaction_id !== undefined
     ) {
       const latestPayment = db
         .prepare(
@@ -536,15 +616,17 @@ function updateStatus(req, res) {
           UPDATE payments SET
             mode = CASE WHEN ? THEN ? ELSE mode END,
             transaction_number = CASE WHEN ? THEN ? ELSE transaction_number END,
-            payment_date = CASE WHEN ? THEN ? ELSE payment_date END
+            transaction_id = CASE WHEN ? THEN ? ELSE transaction_id END,
+            payment_date = COALESCE(?, payment_date)
           WHERE id = ?
         `,
         ).run(
           payment_mode !== undefined ? 1 : 0,
           payment_mode ?? null,
-          transaction_number !== undefined ? 1 : 0,
-          transaction_number ?? null,
-          paid_date !== undefined ? 1 : 0,
+          transaction_id !== undefined || transaction_number !== undefined ? 1 : 0,
+          transaction_id?.trim() || transaction_number?.trim() || null,
+          transaction_id !== undefined || transaction_number !== undefined ? 1 : 0,
+          transaction_id?.trim() || transaction_number?.trim() || null,
           paid_date ?? null,
           latestPayment.id,
         );
@@ -560,8 +642,8 @@ function updateStatus(req, res) {
         ).run(
           payment_mode !== undefined ? 1 : 0,
           payment_mode ?? null,
-          transaction_number !== undefined ? 1 : 0,
-          transaction_number ?? null,
+          transaction_id !== undefined || transaction_number !== undefined ? 1 : 0,
+          transaction_id?.trim() || transaction_number?.trim() || null,
           paid_date !== undefined ? 1 : 0,
           paid_date ?? null,
           req.params.id,
@@ -623,7 +705,8 @@ function getDescriptions(req, res) {
     SELECT DISTINCT description
     FROM invoice_items
     WHERE TRIM(description) != ''
-    ORDER BY description ASC
+      AND description NOT IN (SELECT description FROM hidden_descriptions)
+    ORDER BY id DESC
   `,
     )
     .all();

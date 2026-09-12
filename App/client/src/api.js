@@ -24,6 +24,8 @@ export const convertToInvoice = (id) => api.post(`/api/bills/${id}/convert`);
 export const updatePaymentStatus = (id, payload) =>
   api.put(`/api/bills/${id}/status`, payload);
 export const getDescriptions = () => api.get("/api/bills/descriptions");
+export const hideDescription = (description) =>
+  api.post("/api/hidden-descriptions", { description });
 export const updateBill = (id, data) => api.put(`/api/bills/${id}`, data);
 export const uploadLineItemImage = (formData) =>
   api.post("/api/bills/line-item-image", formData);
@@ -36,6 +38,8 @@ export const createIssuer = (formData) =>
 export const updateIssuer = (id, data) => api.put(`/api/issuers/${id}`, data);
 export const uploadLogo = (id, formData) =>
   api.patch(`/api/issuers/${id}/logo`, formData);
+export const uploadSignature = (id, formData) =>
+  api.patch(`/api/issuers/${id}/signature`, formData);
 export const changePrefix = (id, data) =>
   api.post(`/api/issuers/${id}/change-prefix`, data);
 export const getPrefixHistory = (id) =>

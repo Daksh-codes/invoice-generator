@@ -21,6 +21,7 @@ import {
   createInvoice,
   createQuotation,
   getDescriptions,
+  hideDescription,
 } from "../api";
 import LineItemImageInput from "../component/LineItemImageInput";
 
@@ -118,6 +119,7 @@ function Combobox({
   value,
   onChange,
   onCreateNew,
+  onHideOption,
   placeholder,
   error,
 }) {
@@ -176,23 +178,41 @@ function Combobox({
             <div className="px-3 py-2 text-xs text-slate-400">No options</div>
           )}
           {filtered.map((o) => (
-            <button
+            <div
               key={o.value}
-              type="button"
-              onMouseDown={() => {
-                onChange(o.value);
-                setQuery("");
-                setOpen(false);
-                setFocused(false);
-              }}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition ${
+              className={`flex items-center hover:bg-slate-50 transition ${
                 o.value === value
                   ? "font-medium text-slate-800"
                   : "text-slate-600"
               }`}
             >
-              {o.label}
-            </button>
+              <button
+                type="button"
+                onMouseDown={() => {
+                  onChange(o.value);
+                  setQuery("");
+                  setOpen(false);
+                  setFocused(false);
+                }}
+                className="min-w-0 flex-1 text-left px-3 py-2 text-sm"
+              >
+                {o.label}
+              </button>
+              {onHideOption && (
+                <button
+                  type="button"
+                  title="Hide from suggestions"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onHideOption(o.value);
+                  }}
+                  className="shrink-0 px-3 py-2 text-slate-300 hover:text-red-500"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           ))}
           {query.trim() && !exactMatch && (
             <button
@@ -294,7 +314,7 @@ export default function BillForm() {
   const [template, setTemplate] = useState("with_logo");
   const [issuerId, setIssuerId] = useState("");
   const [clientId, setClientId] = useState("");
-  const [pendingClient, setPendingClient] = useState(null); // { name, address } for new clients not yet in DB
+  const [pendingClient, setPendingClient] = useState(null); // { name, address, phone } for new clients not yet in DB
   const [billDate, setBillDate] = useState(today());
   const [dueDate, setDueDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
@@ -389,7 +409,7 @@ export default function BillForm() {
 
   // Store new client as pending — create on bill submit with address
   function handleCreateClient(name) {
-    setPendingClient({ name, address: "" });
+    setPendingClient({ name, address: "", phone: "" });
     setClientId("__pending__");
     setErrors((e) => ({ ...e, clientId: null }));
   }
@@ -404,6 +424,17 @@ export default function BillForm() {
       prev.map((item, i) => (i === index ? { ...item, [key]: value } : item)),
     );
     setErrors((e) => ({ ...e, [`item_${index}_${key}`]: null }));
+  }
+
+  async function handleHideDescription(description) {
+    setDescriptions((prev) => prev.filter((d) => d !== description));
+    try {
+      await hideDescription(description);
+    } catch (err) {
+      setDescriptions((prev) =>
+        prev.includes(description) ? prev : [...prev, description],
+      );
+    }
   }
 
   function removeItem(index) {
@@ -445,6 +476,7 @@ export default function BillForm() {
         const res = await createClient({
           name: pendingClient.name.trim(),
           address: pendingClient.address?.trim() || null,
+          phone: pendingClient.phone?.trim() || null,
         });
         resolvedClientId = res.data.id;
         setClients((c) => [
@@ -453,6 +485,7 @@ export default function BillForm() {
             id: res.data.id,
             name: pendingClient.name.trim(),
             address: pendingClient.address?.trim() || null,
+            phone: pendingClient.phone?.trim() || null,
           },
         ]);
         setClientId(String(res.data.id));
@@ -620,6 +653,17 @@ export default function BillForm() {
                     placeholder="Address (optional)"
                     className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-slate-300"
                   />
+                  <input
+                    value={pendingClient.phone}
+                    onChange={(e) =>
+                      setPendingClient((p) => ({
+                        ...p,
+                        phone: e.target.value,
+                      }))
+                    }
+                    placeholder="Phone (optional)"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-slate-300"
+                  />
                 </div>
               )}
               {clientId && clientId !== "__pending__" && (
@@ -714,6 +758,7 @@ export default function BillForm() {
                     value={item.description}
                     onChange={(v) => updateItem(i, "description", v ?? "")}
                     onCreateNew={(v) => updateItem(i, "description", v)}
+                    onHideOption={handleHideDescription}
                     placeholder="Service description…"
                     error={errors[`item_${i}_description`]}
                   />

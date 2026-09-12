@@ -10,6 +10,7 @@ import {
   getAllClients,
   createClient,
   getDescriptions,
+  hideDescription,
   updateBill,
 } from "../api";
 import LineItemImageInput from "../component/LineItemImageInput";
@@ -103,6 +104,7 @@ function Combobox({
   value,
   onChange,
   onCreateNew,
+  onHideOption,
   placeholder,
   error,
 }) {
@@ -158,19 +160,37 @@ function Combobox({
             <div className="px-3 py-2 text-xs text-slate-400">No options</div>
           )}
           {filtered.map((o) => (
-            <button
+            <div
               key={o.value}
-              type="button"
-              onMouseDown={() => {
-                onChange(o.value);
-                setQuery("");
-                setOpen(false);
-                setFocused(false);
-              }}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition ${o.value === value ? "font-medium text-slate-800" : "text-slate-600"}`}
+              className={`flex items-center hover:bg-slate-50 transition ${o.value === value ? "font-medium text-slate-800" : "text-slate-600"}`}
             >
-              {o.label}
-            </button>
+              <button
+                type="button"
+                onMouseDown={() => {
+                  onChange(o.value);
+                  setQuery("");
+                  setOpen(false);
+                  setFocused(false);
+                }}
+                className="min-w-0 flex-1 text-left px-3 py-2 text-sm"
+              >
+                {o.label}
+              </button>
+              {onHideOption && (
+                <button
+                  type="button"
+                  title="Hide from suggestions"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onHideOption(o.value);
+                  }}
+                  className="shrink-0 px-3 py-2 text-slate-300 hover:text-red-500"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           ))}
           {query.trim() && !exactMatch && onCreateNew && (
             <button
@@ -387,8 +407,8 @@ export default function BillEditForm() {
 
   async function handleCreateClient(name) {
     try {
-      const res = await createClient({ name });
-      const newClient = { id: res.data.id, name };
+      const res = await createClient({ name: name.trim() });
+      const newClient = { id: res.data.id, name: name.trim() };
       setClients((c) => [...c, newClient]);
       setClientId(String(res.data.id));
     } catch (err) {
@@ -408,6 +428,18 @@ export default function BillEditForm() {
     );
     setErrors((e) => ({ ...e, [`item_${index}_${key}`]: null }));
   }
+
+  async function handleHideDescription(description) {
+    setDescriptions((prev) => prev.filter((d) => d !== description));
+    try {
+      await hideDescription(description);
+    } catch (err) {
+      setDescriptions((prev) =>
+        prev.includes(description) ? prev : [...prev, description],
+      );
+    }
+  }
+
   function removeItem(index) {
     if (items.length === 1) return;
     setItems((prev) => prev.filter((_, i) => i !== index));
@@ -607,6 +639,7 @@ export default function BillEditForm() {
                     value={item.description}
                     onChange={(v) => updateItem(i, "description", v ?? "")}
                     onCreateNew={(v) => updateItem(i, "description", v)}
+                    onHideOption={handleHideDescription}
                     placeholder="Service description…"
                     error={errors[`item_${i}_description`]}
                   />

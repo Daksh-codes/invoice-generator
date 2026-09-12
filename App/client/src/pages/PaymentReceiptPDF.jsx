@@ -36,6 +36,7 @@ function PaymentRow({ payment }) {
   const paymentInfo = splitPaymentMode(payment.mode);
   const mode = paymentInfo.mode || payment.mode || "-";
   const transactionNumber =
+    payment.transaction_id ??
     payment.transaction_number ?? paymentInfo.transactionNumber;
 
   return (
@@ -78,6 +79,7 @@ export default function PaymentReceiptPDF({ data }) {
           {
             amount: paidAmount,
             mode: data.payment_mode,
+            transaction_id: data.payment_transaction_id,
             transaction_number: data.transaction_number,
             payment_date: data.paid_date,
           },
@@ -86,7 +88,9 @@ export default function PaymentReceiptPDF({ data }) {
   const paymentInfo = splitPaymentMode(payments[0]?.mode ?? data.payment_mode);
   const paymentModeText = paymentInfo.mode || data.payment_mode;
   const transactionNumber =
+    payments[0]?.transaction_id ??
     payments[0]?.transaction_number ??
+    data.payment_transaction_id ??
     data.transaction_number ??
     paymentInfo.transactionNumber;
   const singlePaymentText =
@@ -142,6 +146,9 @@ export default function PaymentReceiptPDF({ data }) {
             {data.client_address && (
               <Text style={styles.bodyText}>{data.client_address}</Text>
             )}
+            {data.client_phone && (
+              <Text style={styles.bodyText}>Phone: {data.client_phone}</Text>
+            )}
             {data.client_gstin && data.is_gst_enabled === 1 && (
               <Text style={styles.bodyText}>GSTIN: {data.client_gstin}</Text>
             )}
@@ -157,7 +164,7 @@ export default function PaymentReceiptPDF({ data }) {
               <>
                 <DetailRow label="Payment Mode" value={paymentModeText} />
                 <DetailRow
-                  label="Transaction No."
+                  label="Transaction ID"
                   value={transactionNumber}
                 />
               </>

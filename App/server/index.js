@@ -11,6 +11,11 @@ const AdmZip = require('adm-zip');
 
 // Run migrations FIRST before any controller is required
 runMigrations(db);
+db.exec(`
+  CREATE TABLE IF NOT EXISTS hidden_descriptions (
+    description TEXT PRIMARY KEY
+  );
+`);
 
 const issuerRoute = require("./routes/issuerRoutes.js");
 const clientRoute = require("./routes/clientRoutes.js");
@@ -19,6 +24,7 @@ const billRoutes = require("./routes/billRoute.js");
 const appRoutes = require("./routes/appRoutes.js");
 const paymentModeRoutes = require("./routes/paymentModeRoutes.js");
 const paymentRoutes = require("./routes/paymentRoutes.js");
+const hiddenDescriptionRoutes = require("./routes/hiddenDescriptionRoutes.js");
 
 const app = express();
 
@@ -50,6 +56,7 @@ app.use("/api/bills", billRoutes);
 app.use("/api/app", appRoutes);
 app.use("/api/payment-modes", paymentModeRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/hidden-descriptions", hiddenDescriptionRoutes);
 
 app.get("/api/version", (req, res) => {
   const versionData = JSON.parse(fs.readFileSync(versionPath, "utf-8"));

@@ -14,6 +14,7 @@ import {
   updateIssuer,
   getIssuer,
   uploadLogo,
+  uploadSignature,
   createBank,
   updateBank,
   getBankByIssuer,
@@ -156,6 +157,11 @@ export default function FirmForm() {
   const [logoPreview, setLogoPreview] = useState(null);
   const [existingLogo, setExistingLogo] = useState(null);
 
+  // Signature state
+  const [signatureFile, setSignatureFile] = useState(null);
+  const [signaturePreview, setSignaturePreview] = useState(null);
+  const [existingSignature, setExistingSignature] = useState(null);
+
   // Bank fields
   const [bank, setBank] = useState({
     account_holder_name: "",
@@ -199,6 +205,10 @@ export default function FirmForm() {
         if (d.logo) {
           setExistingLogo(d.logo);
           setLogoPreview(imageUrl(d.logo));
+        }
+        if (d.signature_image) {
+          setExistingSignature(d.signature_image);
+          setSignaturePreview(imageUrl(d.signature_image));
         }
 
         try {
@@ -244,6 +254,13 @@ export default function FirmForm() {
     if (!file) return;
     setLogoFile(file);
     setLogoPreview(URL.createObjectURL(file));
+  }
+
+  function handleSignatureChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setSignatureFile(file);
+    setSignaturePreview(URL.createObjectURL(file));
   }
 
   function handleQrChange(e) {
@@ -298,6 +315,11 @@ export default function FirmForm() {
           fd.append("firm_logo", logoFile);
           await uploadLogo(id, fd);
         }
+        if (signatureFile) {
+          const fd = new FormData();
+          fd.append("signature_image", signatureFile);
+          await uploadSignature(id, fd);
+        }
       } else {
         // Create firm with logo in one multipart call
         const fd = new FormData();
@@ -306,6 +328,7 @@ export default function FirmForm() {
           else fd.append(k, v);
         });
         if (logoFile) fd.append("firm_logo", logoFile);
+        if (signatureFile) fd.append("signature_image", signatureFile);
         const res = await createIssuer(fd);
         issuerId = res.data.id;
       }
@@ -405,6 +428,16 @@ export default function FirmForm() {
                 setLogoFile(null);
                 setLogoPreview(null);
                 setExistingLogo(null);
+              }}
+            />
+            <ImageUploadBox
+              label="Signature"
+              preview={signaturePreview}
+              onChange={handleSignatureChange}
+              onClear={() => {
+                setSignatureFile(null);
+                setSignaturePreview(null);
+                setExistingSignature(null);
               }}
             />
             <div className="flex-1 grid grid-cols-1 gap-4">
