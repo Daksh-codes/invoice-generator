@@ -83,6 +83,9 @@ export default function PaymentReceiptPDF({ data }) {
             {data.client_address && (
               <Text style={styles.bodyText}>{data.client_address}</Text>
             )}
+            {data.client_phone && (
+              <Text style={styles.bodyText}>Phone: {data.client_phone}</Text>
+            )}
             {data.client_gstin && data.is_gst_enabled === 1 && (
               <Text style={styles.bodyText}>GSTIN: {data.client_gstin}</Text>
             )}
@@ -94,6 +97,11 @@ export default function PaymentReceiptPDF({ data }) {
             <DetailRow label="Invoice No." value={data.bill_number} />
             <DetailRow label="Invoice Date" value={formatDate(data.bill_date)} />
             <DetailRow label="Payment Date" value={formatDate(data.paid_date)} />
+            <DetailRow label="Payment Mode" value={data.payment_mode} />
+            <DetailRow
+              label="Transaction ID"
+              value={data.payment_transaction_id}
+            />
           </View>
         </View>
 

@@ -229,7 +229,7 @@ export default function SettingsPage() {
           </button>
         </form>
 
-        <section className="bg-white rounded-xl p-6 shadow-sm space-y-4">
+        {/*<section className="bg-white rounded-xl p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-sm font-bold text-slate-800">
               Application updates
@@ -282,7 +282,7 @@ export default function SettingsPage() {
               {updateInfo?.currentVersion ?? "unknown"})
             </p>
           )}
-        </section>
+        </section>*/}
       </div>
     </main>
   );

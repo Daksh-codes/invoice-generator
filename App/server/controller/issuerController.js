@@ -145,16 +145,28 @@ const deleteIssuerTx = db.transaction((id) => {
 
 function createIssuer(req, res) {
   try {
-    // If multer processed a file, attach path to body before validation
-    if (req.file) {
-      req.body.logo = `/images/${req.file.filename}`;
+    // If multer processed files, attach paths to body before validation
+    const logoFile = req.files?.firm_logo?.[0] || req.file;
+    const signatureFile = req.files?.signature_image?.[0];
+    if (logoFile) {
+      req.body.logo = `/images/${logoFile.filename}`;
+    }
+    if (signatureFile) {
+      req.body.signature_image = `/images/${signatureFile.filename}`;
     }
     const id = createIssuerTx(req.body);
     res.json({ id });
   } catch (err) {
-    // Clean up uploaded file if DB write failed
-    if (req.file?.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    // Clean up uploaded files if DB write failed
+    const uploadedFiles = req.files
+      ? Object.values(req.files).flat()
+      : req.file
+        ? [req.file]
+        : [];
+    for (const file of uploadedFiles) {
+      if (file?.path && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
     }
     res
       .status(err.statusCode || 500)
@@ -317,6 +329,40 @@ function uploadLogo(req, res) {
   }
 }
 
+function uploadSignature(req, res) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const issuer = db
+      .prepare("SELECT id, signature_image FROM issuer WHERE id = ?")
+      .get(req.params.id);
+    if (!issuer) {
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ message: "Issuer not found" });
+    }
+
+    if (issuer.signature_image) {
+      const oldFile = path.join(__dirname, "..", issuer.signature_image);
+      if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
+    }
+
+    const newPath = `/images/${req.file.filename}`;
+    db.prepare("UPDATE issuer SET signature_image = ? WHERE id = ?").run(
+      newPath,
+      req.params.id,
+    );
+
+    res.json({ success: true, signature_image: newPath });
+  } catch (err) {
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({ message: err.message });
+  }
+}
+
 module.exports = {
   createIssuer,
   getIssuerById,
@@ -326,4 +372,5 @@ module.exports = {
   changePrefix,
   getPrefixHistory,
   uploadLogo,
+  uploadSignature,
 };

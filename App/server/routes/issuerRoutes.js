@@ -11,12 +11,17 @@ const {
   changePrefix,
   getPrefixHistory,
   uploadLogo,
+  uploadSignature,
 } = require("../controller/issuerController");
 
 // Create firm — accepts multipart/form-data so logo can be included
 router.post(
   "/new",
-  (req, res, next) => upload.single("firm_logo")(req, res, next),
+  (req, res, next) =>
+    upload.fields([
+      { name: "firm_logo", maxCount: 1 },
+      { name: "signature_image", maxCount: 1 },
+    ])(req, res, next),
   handleUploadError,
   createIssuer,
 );
@@ -34,6 +39,13 @@ router.patch(
   (req, res, next) => upload.single("firm_logo")(req, res, next),
   handleUploadError,
   uploadLogo,
+);
+
+router.patch(
+  "/:id/signature",
+  (req, res, next) => upload.single("signature_image")(req, res, next),
+  handleUploadError,
+  uploadSignature,
 );
 
 module.exports = router;

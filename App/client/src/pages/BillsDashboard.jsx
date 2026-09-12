@@ -51,7 +51,7 @@ const STATUS_STYLES = {
     bg: "bg-amber-50",
     text: "text-amber-700",
     dot: "bg-amber-400",
-    label: "Advance",
+    label: "Payment on Account",
   },
   paid: {
     bg: "bg-emerald-50",
@@ -68,6 +68,16 @@ const STATUS_STYLES = {
 };
 
 // ── Shared: Mode dropdown with inline add ─────────────────────────────────
+function modeLabel(mode) {
+  return typeof mode === "string" ? mode : mode?.label ?? "";
+}
+
+function modeRequiresTransactionId(modes, selectedLabel) {
+  const selected = modes.find((mode) => modeLabel(mode) === selectedLabel);
+  if (selected) return !!selected.requires_transaction_id;
+  return selectedLabel?.trim().toLowerCase() !== "cash";
+}
+
 function ModeDropdown({ current, modes, onSelect, onAddMode }) {
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -89,8 +99,11 @@ function ModeDropdown({ current, modes, onSelect, onAddMode }) {
     const label = newLabel.trim();
     if (!label) return;
 
-    const created = await onAddMode(label);
-    if (created) onSelect(created.label);
+    const requiresTransactionId = window.confirm(
+      "Should this payment mode require a transaction ID?",
+    );
+    const created = await onAddMode(label, requiresTransactionId);
+    if (created) onSelect(modeLabel(created));
 
     setAdding(false);
     setNewLabel("");
@@ -109,18 +122,21 @@ function ModeDropdown({ current, modes, onSelect, onAddMode }) {
 
       {open && (
         <div className="absolute z-50 left-0 mt-1 bg-white rounded-lg shadow-lg border py-1 min-w-40">
-          {modes.map((m) => (
-            <button
-              key={m}
-              onClick={() => {
-                onSelect(m);
-                setOpen(false);
-              }}
-              className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
-            >
-              {m}
-            </button>
-          ))}
+          {modes.map((m) => {
+            const label = modeLabel(m);
+            return (
+              <button
+                key={label}
+                onClick={() => {
+                  onSelect(label);
+                  setOpen(false);
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                {label}
+              </button>
+            );
+          })}
 
           <div className="border-t mt-1 pt-1">
             {adding ? (
@@ -262,8 +278,9 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
   const [payments, setPayments] = useState([]);
   const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState(
-    bill.payment_mode ?? modes[0] ?? "",
+    bill.payment_mode ?? modeLabel(modes[0]) ?? "",
   );
+  const [transactionId, setTransactionId] = useState("");
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
@@ -276,6 +293,7 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
   const newAmount = parseFloat(amount) || 0;
   const balance = Math.max(total - paidSoFar, 0);
   const balanceAfter = Math.max(balance - newAmount, 0);
+  const requiresTransactionId = modeRequiresTransactionId(modes, paymentMode);
 
   useEffect(() => {
     let alive = true;
@@ -308,11 +326,13 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
         invoice_id: bill.id,
         amount: newAmount,
         mode: paymentMode,
+        transaction_id: transactionId,
         payment_date: paymentDate,
       });
       setPayments(res.data.payments ?? []);
       if (res.data.invoice) onChanged(bill.id, res.data.invoice);
       setAmount("");
+      setTransactionId("");
     } catch (err) {
       setError(err.response?.data?.message ?? "Failed to add payment.");
     } finally {
@@ -337,7 +357,7 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/30" onClick={onCancel} />
-      <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-2xl z-10 space-y-5">
+      <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-4xl z-10 space-y-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold text-slate-800">
@@ -354,7 +374,7 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-lg bg-slate-50 px-3 py-2">
             <p className="text-xs text-slate-400">Paid so far</p>
             <p className="text-sm font-semibold text-emerald-600">
@@ -388,16 +408,19 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
               No payments recorded yet.
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 max-h-52">
+            <div className="divide-y divide-slate-100 max-h-52 overflow-x-auto">
               {payments.map((payment) => (
                 <div
                   key={payment.id}
-                  className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center px-3 py-2 text-sm"
+                  className="grid grid-cols-[110px_90px_minmax(120px,1fr)_100px_56px] gap-3 items-center px-3 py-2 text-sm min-w-[560px]"
                 >
                   <span className="text-slate-500">
                     {formatDate(payment.payment_date)}
                   </span>
                   <span className="text-slate-600">{payment.mode ?? "-"}</span>
+                  <span className="text-slate-500 text-xs">
+                    {payment.transaction_id ?? "-"}
+                  </span>
                   <span className="font-medium text-slate-800 text-right">
                     {formatAmount(payment.amount)}
                   </span>
@@ -415,8 +438,8 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(130px,0.8fr)_minmax(170px,1fr)_minmax(150px,0.9fr)_minmax(180px,1.1fr)_auto] gap-3 items-end">
+          <div className="min-w-0">
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
               Amount
             </label>
@@ -442,19 +465,28 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
                 onChange={(e) => setPaymentMode(e.target.value)}
                 className="min-w-0 flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white"
               >
-                {modes.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
+                {modes.map((m) => {
+                  const label = modeLabel(m);
+                  return (
+                  <option key={label} value={label}>
+                    {label}
                   </option>
-                ))}
+                  );
+                })}
               </select>
               <button
                 type="button"
                 onClick={async () => {
                   const label = window.prompt("New mode name:");
                   if (!label?.trim()) return;
-                  const created = await onAddMode(label.trim());
-                  if (created) setPaymentMode(created.label);
+                  const requiresNewTransactionId = window.confirm(
+                    "Should this payment mode require a transaction ID?",
+                  );
+                  const created = await onAddMode(
+                    label.trim(),
+                    requiresNewTransactionId,
+                  );
+                  if (created) setPaymentMode(modeLabel(created));
                 }}
                 className="px-3 py-2 text-xs rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-slate-400 transition-colors whitespace-nowrap"
               >
@@ -462,7 +494,7 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
               </button>
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
               Date
             </label>
@@ -473,6 +505,18 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
               className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
           </div>
+          <div className="min-w-0">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+              Transaction ID
+            </label>
+            <input
+              value={transactionId}
+              onChange={(e) => setTransactionId(e.target.value)}
+              disabled={!requiresTransactionId}
+              placeholder={requiresTransactionId ? "Required" : "Not needed"}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:bg-slate-50 disabled:text-slate-300"
+            />
+          </div>
           <button
             type="button"
             onClick={handleAddPayment}
@@ -481,9 +525,10 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
               loading ||
               !newAmount ||
               newAmount <= 0 ||
-              newAmount > balance
+              newAmount > balance ||
+              (requiresTransactionId && !transactionId.trim())
             }
-            className="px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+            className="w-full lg:w-auto px-4 py-2 text-sm font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap"
           >
             Add Payment
           </button>
@@ -506,11 +551,13 @@ function PartialModal({ bill, modes, onAddMode, onChanged, onCancel }) {
 // Paid Modal ─────────────────────────────────────────────────────────────
 function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
   const [paymentMode, setPaymentMode] = useState(
-    bill.payment_mode ?? modes[0] ?? "",
+    bill.payment_mode ?? modeLabel(modes[0]) ?? "",
   );
   const [paidDate, setPaidDate] = useState(
     bill.paid_date ?? new Date().toISOString().slice(0, 10),
   );
+  const [transactionId, setTransactionId] = useState("");
+  const requiresTransactionId = modeRequiresTransactionId(modes, paymentMode);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -536,19 +583,28 @@ function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
                 onChange={(e) => setPaymentMode(e.target.value)}
                 className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white"
               >
-                {modes.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
+                {modes.map((m) => {
+                  const label = modeLabel(m);
+                  return (
+                  <option key={label} value={label}>
+                    {label}
                   </option>
-                ))}
+                  );
+                })}
               </select>
               <button
                 type="button"
                 onClick={async () => {
                   const label = window.prompt("New mode name:");
                   if (!label?.trim()) return;
-                  const created = await onAddMode(label.trim());
-                  if (created) setPaymentMode(created.label);
+                  const requiresNewTransactionId = window.confirm(
+                    "Should this payment mode require a transaction ID?",
+                  );
+                  const created = await onAddMode(
+                    label.trim(),
+                    requiresNewTransactionId,
+                  );
+                  if (created) setPaymentMode(modeLabel(created));
                 }}
                 className="px-3 py-2 text-xs rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-slate-400 transition-colors whitespace-nowrap"
               >
@@ -557,7 +613,7 @@ function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
               Payment Date
             </label>
@@ -566,6 +622,18 @@ function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
               value={paidDate}
               onChange={(e) => setPaidDate(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+              Transaction ID
+            </label>
+            <input
+              value={transactionId}
+              onChange={(e) => setTransactionId(e.target.value)}
+              disabled={!requiresTransactionId}
+              placeholder={requiresTransactionId ? "Required" : "Not needed"}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:bg-slate-50 disabled:text-slate-300"
             />
           </div>
         </div>
@@ -584,8 +652,10 @@ function PaidModal({ bill, modes, onAddMode, onConfirm, onCancel }) {
                 paid_amount: Number(bill.total),
                 payment_mode: paymentMode,
                 paid_date: paidDate,
+                transaction_id: transactionId,
               })
             }
+            disabled={requiresTransactionId && !transactionId.trim()}
             className="px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
           >
             Confirm
@@ -903,10 +973,13 @@ export default function BillsDashboard() {
     return { count: filtered.length, total, paid, pending };
   }, [filtered]);
 
-  async function handleAddMode(label) {
+  async function handleAddMode(label, requiresTransactionId = false) {
     try {
-      const res = await createPaymentMode({ label });
-      const newMode = res.data.label;
+      const res = await createPaymentMode({
+        label,
+        requires_transaction_id: requiresTransactionId ? 1 : 0,
+      });
+      const newMode = res.data;
       setPaymentModes((prev) => [...prev, newMode]);
       return res.data;
     } catch (err) {
@@ -929,7 +1002,10 @@ export default function BillsDashboard() {
           "Paid (₹)": Number(bill.paid_amount ?? 0),
           "Balance (₹)":
             Number(bill.total ?? 0) - Number(bill.paid_amount ?? 0),
-          Status: bill.payment_status === "partial" ? "Advance" : bill.payment_status ?? "",
+          Status:
+            bill.payment_status === "partial"
+              ? "Payment on Account"
+              : bill.payment_status ?? "",
           "Payment Mode": bill.payment_mode ?? "",
           Template: bill.template ?? "",
           "Bill Status": bill.status ?? "",
@@ -1122,7 +1198,7 @@ export default function BillsDashboard() {
               >
                 <option value="">All Status</option>
                 <option value="unpaid">Unpaid</option>
-                <option value="partial">Advance</option>
+                <option value="partial">Payment on Account</option>
                 <option value="paid">Paid</option>
               </select>
             </div>
@@ -1137,11 +1213,14 @@ export default function BillsDashboard() {
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 bg-slate-50"
               >
                 <option value="">All Modes</option>
-                {paymentModes.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
+                {paymentModes.map((m) => {
+                  const label = modeLabel(m);
+                  return (
+                    <option key={label} value={label}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -1262,7 +1341,7 @@ export default function BillsDashboard() {
                           {bill.payment_status === "partial" &&
                             bill.paid_amount > 0 && (
                               <div className="text-xs text-slate-500 font-normal mt-1">
-                                Advance {formatAmount(bill.paid_amount)} · Pending {formatAmount(
+                                Payment on Account {formatAmount(bill.paid_amount)} · Pending {formatAmount(
                                   Number(bill.total) - Number(bill.paid_amount),
                                 )}
                               </div>
@@ -1362,3 +1441,4 @@ export default function BillsDashboard() {
     </div>
   );
 }
+
