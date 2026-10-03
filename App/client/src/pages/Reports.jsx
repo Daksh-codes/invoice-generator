@@ -64,27 +64,21 @@ function isWithinDateRange(value, from, to) {
   return true;
 }
 
+function getModeKey(mode) {
+  return (mode || "Unknown").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 function getModeTotals(rows) {
   const totals = new Map();
 
   rows.forEach((payment) => {
-    totals.set(payment.mode, (totals.get(payment.mode) ?? 0) + payment.amount);
+    const key = getModeKey(payment.mode);
+    const entry = totals.get(key) ?? { mode: payment.mode, total: 0 };
+    entry.total += payment.amount;
+    totals.set(key, entry);
   });
 
-  return Array.from(totals)
-    .map(([mode, total]) => ({ mode, total }))
-    .sort((a, b) => b.total - a.total);
-}
-
-function normalizePaymentModes(rows) {
-  const labels = new Map();
-
-  return rows.map((payment) => {
-    const label = String(payment.mode ?? "").trim().replace(/\s+/g, " ") || "Unknown";
-    const key = label.toLowerCase();
-    if (!labels.has(key)) labels.set(key, label);
-    return { ...payment, mode: labels.get(key) };
-  });
+  return [...totals.values()].sort((a, b) => b.total - a.total);
 }
 
 export default function Reports() {
@@ -131,7 +125,7 @@ export default function Reports() {
             const amount = Number(payment.amount ?? 0);
             if (!amount) return;
 
-            const mode = payment.mode || "Unknown";
+            const mode = payment.mode?.trim().replace(/\s+/g, " ") || "Unknown";
             rows.push({
               id: payment.id ?? `${bill.id}-${rows.length}`,
               invoiceId: bill.id,
@@ -144,11 +138,10 @@ export default function Reports() {
           });
         });
 
-        const normalizedRows = normalizePaymentModes(rows);
-        const chartData = getModeTotals(normalizedRows);
+        const chartData = getModeTotals(rows);
 
         if (!alive) return;
-        setPaymentRows(normalizedRows);
+        setPaymentRows(rows);
         setSelectedMode(chartData[0]?.mode ?? "");
       } catch (err) {
         if (alive) {
@@ -207,7 +200,9 @@ export default function Reports() {
 
   const filteredPayments = useMemo(
     () =>
-      dateFilteredPayments.filter((payment) => payment.mode === selectedMode),
+      dateFilteredPayments.filter(
+        (payment) => getModeKey(payment.mode) === getModeKey(selectedMode),
+      ),
     [dateFilteredPayments, selectedMode],
   );
 
