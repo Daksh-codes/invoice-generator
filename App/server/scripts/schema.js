@@ -104,8 +104,7 @@ function createCurrentSchema(db, { markMigrations = false } = {}) {
 
     CREATE TABLE IF NOT EXISTS payment_modes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      label TEXT NOT NULL UNIQUE,
-      requires_transaction_id INTEGER DEFAULT 0
+      label TEXT NOT NULL UNIQUE
     );
 
     CREATE TABLE IF NOT EXISTS payments (
@@ -113,7 +112,6 @@ function createCurrentSchema(db, { markMigrations = false } = {}) {
       invoice_id INTEGER NOT NULL,
       amount REAL NOT NULL CHECK(amount > 0),
       mode TEXT,
-      transaction_id TEXT,
       payment_date TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (invoice_id) REFERENCES invoice(id) ON DELETE CASCADE
@@ -122,8 +120,8 @@ function createCurrentSchema(db, { markMigrations = false } = {}) {
     CREATE INDEX IF NOT EXISTS idx_payments_invoice_id
       ON payments(invoice_id);
 
-    INSERT OR IGNORE INTO payment_modes (label, requires_transaction_id)
-      VALUES ('Cash', 0), ('UPI', 1), ('Bank Transfer', 1);
+    INSERT OR IGNORE INTO payment_modes (label)
+      VALUES ('Cash'), ('UPI'), ('Bank Transfer');
 
     CREATE TABLE IF NOT EXISTS migrations (
       version INTEGER PRIMARY KEY

@@ -286,9 +286,6 @@ function PaymentSummary({ data }) {
           {data.payment_mode && (
             <div className="text-sm">Payment mode: {data.payment_mode}</div>
           )}
-          {data.payment_transaction_id && (
-            <div className="text-sm">Transaction ID: {data.payment_transaction_id}</div>
-          )}
           {data.paid_date && (
             <div className="text-sm">Paid date: {formatDate(data.paid_date)}</div>
           )}
@@ -298,9 +295,6 @@ function PaymentSummary({ data }) {
           <div className="font-semibold">Paid: ₹{formatAmount(paidAmount)}</div>
           {data.payment_mode && (
             <div className="text-sm">Payment mode: {data.payment_mode}</div>
-          )}
-          {data.payment_transaction_id && (
-            <div className="text-sm">Transaction ID: {data.payment_transaction_id}</div>
           )}
           {data.paid_date && (
             <div className="text-sm">Paid date: {formatDate(data.paid_date)}</div>

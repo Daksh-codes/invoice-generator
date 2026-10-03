@@ -156,40 +156,9 @@ const migrations = [
   },
   {
     version: 9,
-    description: "Add transaction id support to payments and payment modes",
-    up: (db) => {
-      const paymentModeColumns = db.prepare("PRAGMA table_info(payment_modes)").all();
-      if (!paymentModeColumns.some((c) => c.name === "requires_transaction_id")) {
-        db.exec(`ALTER TABLE payment_modes ADD COLUMN requires_transaction_id INTEGER DEFAULT 0`);
-      }
-
-      const paymentColumns = db.prepare("PRAGMA table_info(payments)").all();
-      if (!paymentColumns.some((c) => c.name === "transaction_id")) {
-        db.exec(`ALTER TABLE payments ADD COLUMN transaction_id TEXT`);
-      }
-      if (paymentColumns.some((c) => c.name === "transaction_number")) {
-        db.prepare(`
-          UPDATE payments
-          SET transaction_id = transaction_number
-          WHERE (transaction_id IS NULL OR TRIM(transaction_id) = '')
-            AND transaction_number IS NOT NULL
-            AND TRIM(transaction_number) != ''
-        `).run();
-      }
-
-      db.prepare(`
-        UPDATE payment_modes
-        SET requires_transaction_id = CASE
-          WHEN LOWER(TRIM(label)) = 'cash' THEN 0
-          ELSE 1
-        END
-      `).run();
-
-      db.prepare(`
-        INSERT OR IGNORE INTO payment_modes (label, requires_transaction_id)
-        VALUES ('Cash', 0), ('UPI', 1), ('Bank Transfer', 1)
-      `).run();
-    },
+    description: "Reserved migration version",
+    // Keep the version for databases that already applied it; preserve their data.
+    up: () => {},
   },
 ];
 

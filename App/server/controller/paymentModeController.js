@@ -1,54 +1,50 @@
 const db = require("../db");
 
-function ensurePaymentModeColumns() {
-  const columns = db.prepare("PRAGMA table_info(payment_modes)").all();
-  const hasRequiresTransactionId = columns.some(
-    (column) => column.name === "requires_transaction_id",
-  );
-
-  if (!hasRequiresTransactionId) {
-    db.exec(
-      "ALTER TABLE payment_modes ADD COLUMN requires_transaction_id INTEGER DEFAULT 0",
-    );
-    db.prepare(`
-      UPDATE payment_modes
-      SET requires_transaction_id = CASE
-        WHEN LOWER(TRIM(label)) = 'cash' THEN 0
-        ELSE 1
-      END
-    `).run();
-  }
+function normalizeLabel(label) {
+  return label.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 function getAll(req, res) {
-  ensurePaymentModeColumns();
   const rows = db
-    .prepare("SELECT label, requires_transaction_id FROM payment_modes ORDER BY id ASC")
+    .prepare("SELECT label FROM payment_modes ORDER BY id ASC")
     .all();
   res.json(
     rows.map((r) => ({
       label: r.label,
-      requires_transaction_id: r.requires_transaction_id ? 1 : 0,
     })),
   );
 }
 
 function create(req, res) {
-  ensurePaymentModeColumns();
-  const { label, requires_transaction_id } = req.body;
-  if (!label?.trim()) return res.status(400).json({ message: "Label required" });
-  const requiresTransactionId = requires_transaction_id ? 1 : 0;
+  const { label } = req.body ?? {};
+  if (typeof label !== "string" || !label.trim()) {
+    return res.status(400).json({ message: "Label required" });
+  }
+  const normalizedLabel = normalizeLabel(label);
+  const titleCaseLabel = normalizedLabel.replace(
+    /(^|[^\p{L}\p{N}])(\p{L})/gu,
+    (_, prefix, letter) => prefix + letter.toUpperCase(),
+  );
   try {
+    const exists = db
+      .prepare("SELECT label FROM payment_modes")
+      .all()
+      .some((mode) => normalizeLabel(mode.label) === normalizedLabel);
+    if (exists) {
+      return res.status(409).json({ message: "Mode already exists" });
+    }
     const id = db
-      .prepare("INSERT INTO payment_modes (label, requires_transaction_id) VALUES (?, ?)")
-      .run(label.trim(), requiresTransactionId).lastInsertRowid;
+      .prepare("INSERT INTO payment_modes (label) VALUES (?)")
+      .run(titleCaseLabel).lastInsertRowid;
     res.json({
       id,
-      label: label.trim(),
-      requires_transaction_id: requiresTransactionId,
+      label: titleCaseLabel,
     });
   } catch (err) {
-    res.status(409).json({ message: "Mode already exists" });
+    if (err.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      return res.status(409).json({ message: "Mode already exists" });
+    }
+    res.status(500).json({ message: "Failed to create payment mode" });
   }
 }
 

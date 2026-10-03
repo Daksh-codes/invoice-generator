@@ -65,15 +65,26 @@ function isWithinDateRange(value, from, to) {
 }
 
 function getModeTotals(rows) {
-  const totals = {};
+  const totals = new Map();
 
   rows.forEach((payment) => {
-    totals[payment.mode] = (totals[payment.mode] ?? 0) + payment.amount;
+    totals.set(payment.mode, (totals.get(payment.mode) ?? 0) + payment.amount);
   });
 
-  return Object.entries(totals)
+  return Array.from(totals)
     .map(([mode, total]) => ({ mode, total }))
     .sort((a, b) => b.total - a.total);
+}
+
+function normalizePaymentModes(rows) {
+  const labels = new Map();
+
+  return rows.map((payment) => {
+    const label = String(payment.mode ?? "").trim().replace(/\s+/g, " ") || "Unknown";
+    const key = label.toLowerCase();
+    if (!labels.has(key)) labels.set(key, label);
+    return { ...payment, mode: labels.get(key) };
+  });
 }
 
 export default function Reports() {
@@ -133,10 +144,11 @@ export default function Reports() {
           });
         });
 
-        const chartData = getModeTotals(rows);
+        const normalizedRows = normalizePaymentModes(rows);
+        const chartData = getModeTotals(normalizedRows);
 
         if (!alive) return;
-        setPaymentRows(rows);
+        setPaymentRows(normalizedRows);
         setSelectedMode(chartData[0]?.mode ?? "");
       } catch (err) {
         if (alive) {

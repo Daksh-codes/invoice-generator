@@ -97,11 +97,6 @@ export default function PaymentReceiptPDF({ data }) {
             <DetailRow label="Invoice No." value={data.bill_number} />
             <DetailRow label="Invoice Date" value={formatDate(data.bill_date)} />
             <DetailRow label="Payment Date" value={formatDate(data.paid_date)} />
-            <DetailRow label="Payment Mode" value={data.payment_mode} />
-            <DetailRow
-              label="Transaction ID"
-              value={data.payment_transaction_id}
-            />
           </View>
         </View>
 

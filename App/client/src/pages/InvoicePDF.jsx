@@ -325,11 +325,6 @@ function PaymentSummary({ data }) {
           {data.payment_mode && (
             <Text style={styles.paymentSummaryDetails}>Mode: {data.payment_mode}</Text>
           )}
-          {data.payment_transaction_id && (
-            <Text style={styles.paymentSummaryDetails}>
-              Transaction ID: {data.payment_transaction_id}
-            </Text>
-          )}
           {data.paid_date && (
             <Text style={styles.paymentSummaryDetails}>Paid date: {formatDate(data.paid_date)}</Text>
           )}
@@ -340,11 +335,6 @@ function PaymentSummary({ data }) {
           <Text style={styles.paymentSummaryValue}>₹{formatAmount(paidAmount)}</Text>
           {data.payment_mode && (
             <Text style={styles.paymentSummaryDetails}>Mode: {data.payment_mode}</Text>
-          )}
-          {data.payment_transaction_id && (
-            <Text style={styles.paymentSummaryDetails}>
-              Transaction ID: {data.payment_transaction_id}
-            </Text>
           )}
           {data.paid_date && (
             <Text style={styles.paymentSummaryDetails}>Paid date: {formatDate(data.paid_date)}</Text>
