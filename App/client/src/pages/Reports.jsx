@@ -64,16 +64,21 @@ function isWithinDateRange(value, from, to) {
   return true;
 }
 
+function getModeKey(mode) {
+  return (mode || "Unknown").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 function getModeTotals(rows) {
-  const totals = {};
+  const totals = new Map();
 
   rows.forEach((payment) => {
-    totals[payment.mode] = (totals[payment.mode] ?? 0) + payment.amount;
+    const key = getModeKey(payment.mode);
+    const entry = totals.get(key) ?? { mode: payment.mode, total: 0 };
+    entry.total += payment.amount;
+    totals.set(key, entry);
   });
 
-  return Object.entries(totals)
-    .map(([mode, total]) => ({ mode, total }))
-    .sort((a, b) => b.total - a.total);
+  return [...totals.values()].sort((a, b) => b.total - a.total);
 }
 
 export default function Reports() {
@@ -120,7 +125,7 @@ export default function Reports() {
             const amount = Number(payment.amount ?? 0);
             if (!amount) return;
 
-            const mode = payment.mode || "Unknown";
+            const mode = payment.mode?.trim().replace(/\s+/g, " ") || "Unknown";
             rows.push({
               id: payment.id ?? `${bill.id}-${rows.length}`,
               invoiceId: bill.id,
@@ -195,7 +200,9 @@ export default function Reports() {
 
   const filteredPayments = useMemo(
     () =>
-      dateFilteredPayments.filter((payment) => payment.mode === selectedMode),
+      dateFilteredPayments.filter(
+        (payment) => getModeKey(payment.mode) === getModeKey(selectedMode),
+      ),
     [dateFilteredPayments, selectedMode],
   );
 
